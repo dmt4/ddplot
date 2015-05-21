@@ -1,0 +1,12 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Name=ddplot
+GenericName=ddplot
+Type=Application
+Categories=Education;Science;
+Comment=Visualization of dislocations by two-dimensional differential displacement maps
+Exec=/usr/bin/ddplot
+Icon=/usr/share/pixmaps/ddplot.png
+
+
+
