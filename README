@@ -1,0 +1,167 @@
+--------------------------------------------------------------------------------
+                  A GENTLE INTRODUCTION TO USING  D D P L O T
+                         Roman Groger (groger@ipm.cz)
+--------------------------------------------------------------------------------
+
+
+FILE FORMATS
+
+Following is a list of file formats that are readable by ddplot. If you want to
+use this code for plotting, you are supposed to prepare your data in one of the
+supported formats. The only format that ddplot uses for saving is the internal
+.dd format that whose complexity will evolve in future releases to accommodate
+all possible information required for effective plotting of the dislocation
+displacement maps. 
+
+
+[ .xyz format ]
+
+This is the most trivial format that does not contain any information about the
+orientation of the block, periodicity and like. It is entirely up to the user of
+ddplot to remember these parameters.
+
+ninit
+title_init
+el1  x(1)  y(1)  z(1)
+el2  x(2)  y(2)  z(2)
+ :    :     :     :                   # coordinates of atoms in the initial
+ :    :     :     :                   # configuration (ideal lattice)
+eln  x(n)  y(n)  z(n)
+nrel
+title_rel
+el1  x(1)  y(1)  z(1)
+el2  x(2)  y(2)  z(2)
+ :    :     :     :                   # coordinates of atoms in the relaxed
+ :    :     :     :                   # configuration (relaxed structure)
+eln  x(n)  y(n)  z(n)
+BVECT value                           # Burgers vector of screw dislocation (if any)
+
+
+[ .plt format ]
+
+This is an old format used in one of our simulation codes. Note, that the number
+of atoms in the relaxed configuration should be identical to that in the perfect
+lattice. The relaxed configuration is usually obtained by stressing a perfect
+crystal, where the initial positions of atoms correspond to the perfect lattice.
+
+nrel                              # number of atoms in the relaxed configuration
+z(1)         
+z(2)
+ :                                # z-positions of atoms in the relaxed 
+ :                                # configuration
+z(nrel)
+x(1)      y(1)    zlayer(1)
+x(2)      y(2)    zlayer(2)
+ :         :         :            # (x,y) positions of atoms in the 
+ :         :         :            # relaxed configuration
+x(nrel)  y(nrel)  zlayer(nrel)
+ninit                             # number of atoms in the perfect lattice
+z(1)         
+z(2)
+ :                                # z-positions of atoms in the perfect lattice
+ :
+z(nrel)
+x(1)        y(1)
+x(2)        y(2)
+ :           :                    # (x,y) positions of atoms in the perfect
+ :           :                    # lattice
+x(ninit)  y(ninit)
+0                                 # unused, don't ask me why
+xperiod
+yperiod                           # periodicity in the x, y, z directions
+zperiod
+CORE { xpos; ypos }               # (x,y) position of the screw dislocation
+
+If the block does not contain any screw dislocation, simply omit the last line.
+
+
+[ .bl format]
+
+This is another format from the same simulation code that we are using. The
+format is a bit complicated and is not supposed to be used any more. It is left
+in ddplot only for the sake of quick visualization of the results of our
+simulations.
+
+LEN
+  xlen  ylen  zlen               # x, y and z size of the block
+
+LATPAR
+  latpar                         # lattice parameter
+
+ND
+  nd                             # number of active atoms
+
+D
+  x(1)   y(1)   z(1)   elem(1)
+  x(2)   y(2)   z(2)   elem(2)   # coordinates of active atoms in the
+   :      :      :        :      # relaxed configuration and the name
+   :      :      :        :      # of the element, e.g. Mo
+  x(nd)  y(nd)  z(nd)  elem(nd) 
+
+NINERT
+  ninert                         # number of inert atoms
+
+DINERT
+  x(1)       y(1)       z(1)       elem(1)
+  x(2)       y(2)       z(2)       elem(2)      # coordinates of inert atoms in the
+   :          :          :           :          # relaxed configuration and the name
+   :          :          :           :          # of the element, e.g. Mo
+  x(ninert)  y(ninert)  z(ninert)  elem(ninert) 
+
+UNRLD
+  x(1)       y(1)       z(1)       elem(1)
+  x(2)       y(2)       z(2)       elem(2)      # coordinates of atoms in the
+   :          :          :            :         # perfect lattice and the name
+   :          :          :            :         # of the element, e.g. Mo
+  x(nunrld)  y(nunrld)  z(nunrld)  elem(nunrld) # nurld=nd+ninert
+
+In our simulations, the block is usually divided into two parts. Outer part of
+the (x,y) plane contains inert atoms into which we apply anisotropic
+displacements corresponding to a given stress field. The inner part then
+contains active atoms whose position is obtained by minimization. In the relaxed
+configuration, the force on each atom is essentially zero.
+
+
+[ .dd format]
+
+This is the internal ddplot's format that contain all possible information about
+the block, including the orientation of the block, positions of dislocations,
+periodicity, etc. Each block starts with a header that is written below in
+capital letters. Comments begin with '#' and are ignored by ddplot. Number of
+spaces between each number in a row and between lines is arbitrary.
+
+CSYS                             # orientation of the block given by three 
+  x1  x2  x3                     # vectors defined in the cube coordinate system
+  y1  y2  y3                     # [100], [010], [001]
+  z1  z2  z3
+
+PERIOD
+  xperiod  yperiod  zperiod      # periodicity along x, y and z
+
+DISLO_CENTER
+  xpos  ypos                     # (x,y) position of the screw dislocation
+
+NUM_UNREL
+  ninit                          # number of atoms in the perfect lattice
+  
+COOR_UNREL
+  x(1)      y(1)      z(1)      elem(1)
+  x(2)      y(2)      z(2)      elem(2)        # coordinates of atoms in the
+   :         :         :           :           # perfect lattice and the index
+   :         :         :           :           # of the element of this atom
+  x(ninit)  y(ninit)  z(ninit)  elem(ninit)    # (count from 0)
+
+NUM_REL
+  nrel                           # number of atoms in the relaxed configuration
+
+COOR_REL
+  x(1)     y(1)     z(1)     
+  x(2)     y(2)     z(2)         # coordinates of atoms in the relaxed
+   :        :        :           # configuration
+   :        :        :       
+  x(nrel)  y(nrel)  z(nrel)  
+
+The mandatory fields are NUM_UNREL, COOR_UNREL, NUM_REL, COOR_REL and PERIOD.
+
+
+

@@ -1,0 +1,115 @@
+##############################################################################
+
+                                 D D P L O T
+           Visualization of dislocations by plotting the relative
+                  displacements of the neighboring atoms.
+
+                          Developed in 2002-2010 by
+                         Roman Groger (groger@ipm.cz)
+
+ Academy of Sciences of the Czech Republic, Institute of Physics of Materials
+           Los Alamos National Laboratory, Theoretical Division
+ University of Pennsylvania, Department of Materials Science and Engineering
+
+##############################################################################
+
+
+If you are running the ddplot for the first time, copy the supplied
+.ddplot file into your home directory and look into it. This file
+contains user settings. When ddplot starts, it first checks your
+home directory. If it does not find the .ddplot file, it uses the
+default settings. You can tune a lot of features of .ddplot by
+modifying .ddplot.
+
+----------------------------------------------------------------------
+
+INSTALLATION FOR LINUX
+
+Download and install the Qt library version 3.x. The program does not
+compile with version 4.x.
+
+In the terminal window, run the following commands:
+
+1. qmake  (generates the Makefile)
+2. make   (compiles the program and links it to the shared libs)
+
+Copy the supplied .ddplot file to your home directory and
+edit it if you like a different settings. It is always loaded 
+when you start ddplot.
+
+Some examples of plot files created by the SBOP code can
+be found in the subdirectory plt.
+
+----------------------------------------------------------------------
+
+INSTALLATION FOR WINDOWS
+
+I. Using the precompiled Qt library from Trolltech:
+
+1. Go to http://qt.nokia.com/downloads/windows-cpp and install the
+   precompiled Qt4 library
+2. Set the paths as explained in the point 2 below
+3. Go to the ddplot directory and run
+   qmake
+   make
+4. Copy the supplied .ddplot file to the root directory of the disc
+   where you installed ddplot, e.g. c:\
+
+..........
+
+II. If you want to compile ddplot yourself:
+
+You need to download, unpack and build the Qt library first:
+
+1. Install MinGW with the g++ compiler and make
+2. Set the environment variable PATH to point to the bin directory
+   where the executables of MinGW are stored. This can be done by 
+   right-clicking on My Computer, go to Properties and Advanced tab.
+   In the user variables, find the PATH variable and add in something
+   like c:\mingw\bin
+3. Download the qt-win-free library from the internet and unpack it
+4. Open the DOS terminal by invoking the cmd command from the Run
+   prompt. 
+5. set QTDIR, LD_LIBRARY_PATH and other variables described in 
+   qt's INSTALL
+6. run "configure-mingw" from the terminal. 
+
+At this point the Qt library is built. You can now proceed to compiling
+ddplot that can be done in a few steps. In the terminal window, run the
+following commands:
+
+1. set QMAKESPEC=win32-g++
+2. qmake
+3. mingw32-make clean
+4. mingw32-make
+5. copy qt-mt.dll from %QTDIR%/bin to where your ddplot.exe file is
+6. copy the supplied .ddplot file to the root directory of the disc
+   where you installed ddplot, e.g. c:\
+
+
+------------------------------------------------------------------------
+
+INSTALLATION FOR MAC OS X
+
+You need to install the Apple Developer's Toolkit from the CD that
+came with your Mac OS X. This is called Xcode. Be careful to install
+the correct version for your version of the OS X.
+
+Download the Qt4 library for Mac from the internet. ALthough you can
+get the binary package, some of them were reported to freeze before
+finishing the installation. Therefore, I recommend to get the
+qt-mac-opensource-src-VERSION.tar.gz file and compile Qt4 as:
+
+./configure          ... for a dynamic build 
+  or 
+./configure -static  ... for a static build 
+make 
+make install
+
+Then, ddplot can be compiled as follows:
+
+qmake
+make
+
+Do not forget to copy the supplied .ddplot file to your home directory
+(/Users/myname).

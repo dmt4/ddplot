@@ -1,0 +1,86 @@
+################################################################################
+#
+#  ddplot - USER SETTINGS
+#  Character inputs are non-case-sensitive.
+#
+################################################################################
+
+
+# Width and height of the application window in pixels
+WinSize, 900, 700
+
+# Zoom factor
+ZoomFact, 1
+
+# Plotting of atomic positions - either "relaxed" or "unrelaxed" configuration
+# The displacements in the relaxed configuration are not scaled (real disp.)
+# Example:  AtomPos, relaxed, 10
+#           AtomPos, unrelaxed
+#           AtomPos, composite, 5
+AtomPos, unrelaxed
+
+# Factor for scaling the displacements. If the parameter is a value greater than 
+# one, the displacements are to be enlarged; if it is smaller than 1, the
+# arrows will be shrunk. If you use AUTO, all displacements will be scaled such
+# that the largest passes from one atom to another.
+DScaleFact, 1
+
+# Shortest arrow plotted [pixels]. If zero, all displacements will be plotted,
+# no matter how they are small
+Arrow.Shortest, 0
+Arrow.Thickness, 1
+
+# Coordinate system that corresponds to the data in the plot file. 
+# The third axis is usually parallel to the Burgers vector, the other two
+# are perpendicularly to each other.
+#CSys, -1,2,-1, -1,0,1, 1,1,1
+
+# Projection vector in the Cartesian coordinate system [100], [010], [001]
+ProjVector, 1, 1, 1
+
+# Displacement component plotted
+DispComponent, screw
+
+# Print magnitudes of displacements
+PrintMagDisp, off
+
+# The different graphical appareance of atoms correspond to either the 
+# different layers (layer) or different types of atoms (type) - see the 
+# settings Atom.*
+ADistinguish, layer
+
+# Print the numbers of atoms ?
+AtomNumbers, off
+
+# Associates the atomic names to the numbers in the plot file
+AName, 0, Mo 
+#AName, 0, Ti
+#AName, 1, Al
+
+# Appearance of the atoms in each atomic layer - diameters and thicknesses of 
+# the atoms [pixels] and colors. 
+# Recognized are 19 names of colors: white, black, red, darkRed, green, 
+# darkGreen, blue, darkBlue, cyan, darkCyan, magenta, darkMagenta, yellow, 
+# darkYellow, gray, darkGray, lightGray.
+# You can enter at least one and maximum 10 input parameters - if you give
+# less entries than is the number of atomic layers, the parameters will
+# be repeated from the beginning.
+Atom.Diameter, 12, 12, 12
+Atom.Thickness, 1
+Atom.FGColor, black
+Atom.BGColor, yellow, red, darkblue, green, magenta, black
+
+# Plot traces of planes - 0 says no, any other number gives the angular step
+# in degrees
+PlaneTraces, 0
+
+# The arrows will be plotted between the nearest neighbors and also between
+# the third nearest neighbors (ArrNeighbors,1,3)
+# For bcc:  ArrNeighbors, 1, 2 otherwise the arrows would be plotted only between
+#                              yellow and red atoms
+ArrNeighbors, 1, 2
+
+# Cut-off radius for seeking neighboring atoms. This is needed to calculate the RDF
+# which can then be used to identify the pairs of atoms between which arrows have
+# to be plotted.
+NeighRCut, 3.2

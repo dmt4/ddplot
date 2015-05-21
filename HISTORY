@@ -1,0 +1,355 @@
+Plans for future releases:
+- add BURG_VECT in the .ddplot format
+- check the .dd format - it is not saving correctly
+- make a better resolutions of the formats (avoid segfaults)
+- the color settings for atomic types is missing
+- allow also drawing/filling using patterns
+
+Known bugs to be fixed:
+- segmentation fault during comparison of two plots if another is
+  already plotted (hard to catch - probably variable range overflow)
+- wrong projection when the projection vector is [0 0 number];
+  now it seems to correctly project the displacements in the 
+  xy plane but for the case above, all arrows are zero
+
+Puzzles:
+- when plotting the strained block in the unrelaxed view with inert atoms,
+  there is a gap between the inert atoms and the unrelaxed active atoms.
+  This is not an error because this way we plot the active atoms in the
+  unrelaxed positions but the inert atoms are saved in the file in the
+  positions that correspond to the long-range elastic field of the
+  dislocation. 
+
+Legend:
+  "=" mean major upgrades
+  "!" are unfinished (experimental) developments
+
+
+#######################################################################
+
+Add the release date | version 4.0 (!!! finally migrated to Qt4 !!!)
+
+- added tags NUM_INERT and COOR_INERT into the .dd format
+
+- corrected bug that appeared when selecting many files to plot (it always
+  loaded fewer files than selected)
+
+- added new option in .ddplot: "ZTolerance, 0.01" and the corresponding item
+  in the main menu. Sometimes the atoms do not have exactly the same
+  z-coordinates and yet we would like to assign them to the same z-layer so
+  that they are plotted with the same color. This option allows one to choose
+  the maximum difference of the z-coordinates of atoms that are assigned to the
+  same z-layer.
+
+- added new option in .ddplot: "DispComponent, none" - it allows to plot
+  only atomic positions without arrows; this is done using 
+
+- added a macro that allows for corrections when plottinf the edge components
+  in a periodic BCC block that contains a screw dislocation along the
+  z direction (! this is specific to the periodic BCC block)
+
+- added export to .PLT
+
+- corrected printing of the magnitudes of arrows - the text is not
+  affected by scaling of the lengths of arrows
+
+- no plotting of arrows of zero length (i.e. the messy dots)
+
+- animation into a dynamic .gif done using export to .eps and
+  significantly improved
+
+- status bar made permanent (explicit in Qt4)
+
+- magnitudes of relative displacements plotted along the arrows
+  (i.e. they are rotated by the same angle as is the angle of the
+  corresponding arrow)
+
+- possibility of inputting the Burgers vector of the dislocation; this
+  is necessary to plot the lengths of arrows correctly (their plotted 
+  length must be the physical length modulo the Burgers vector). It is
+  not clear what to do when the block contains more than 1 dislocation.
+
+- when saving to .dd the program does not ask for the coordinate
+  system if it has not been defined
+
+- when exporting the program asks for the file name
+
+- the coordinate system can now be set for all selected plots at once
+
+- added moving forward and backward in the list of plots
+
+
+
+November 11, 2009 | version 3.0
+
+- added rotation about X, Y, Z by 90 deg
+
+- added a correction for edge displacements in calcEdgeRelDisp() which
+  ensures that the vector sum of the arrows is zero (it applies a correction
+  when two atoms interact through the boundary of the periodic domain)
+
+! started working on plotting the continuous dislocation density using
+  the concept of the Nye tensor
+
+! started working on export to EPS using the native Postscript
+
+- fixed the problem that caused segfault when reading in the plot file. It
+  was due to unitialized paintEPS (once it was true it crashed because feps
+  was not open)
+
+- if ddplot crashed on loading a plot file, do this (change roman to your
+  name):
+  rm /Users/roman/Library/Logs/CrashReporter/ddplot.crash.log
+
+- fixed problem when running ddplot from Finder in Mac OS X. The Mac OS X
+  appends automatically as the first argument the process serial number
+  "-psn_". This is disregarded now.
+
+- fixed settings of the plot - only that for the current plot is changed
+
+- added reflections through XZ, YZ and XY planes
+
+- flipping the block changed to 180 deg rotation about the three axes
+
+- fixed bug that gave wrong nearest neighbors (counted from 0 instead of
+  from 1)
+
+- END_OF_LIST is changed from -1 to 0 because when nnlist is 
+  automatically enlarged, it is filled with zeros and not -1
+
+- fixed overflow when an atom has more neighbors than 10 (dynamic
+  enlargement of nnlist)
+
+- added the .xyz format of JMol for reading (see README for details)
+
+- when the NeighRCut is smaller than the actual first neighbor distance
+  it does not give allocation error but asks to increase NeighRCut in
+  .ddplot
+
+- fixed segfault when saving .xyz file from structure load in as a 
+  BOP code (this was caused by accessing unallocated atomType 
+  structure). This may be related to the segfault when comparing two
+  structures.
+
+- all dialog windows checked and cutting of text fields fixed
+  under MacOS X
+
+- fixed the problem with atomType - it now counts from 1
+
+- fixed the problem with xyzMin in pltwin-func.cpp which caused on
+  MacOS X nan when calculating the lower bounds of the block
+
+- fixed bug that made it impossible to read in a block file directly
+  from the command line
+
+- thickness of arrows can also be applied either to the current 
+  plot or to all selected plots
+
+- magnification of arrows/symbols can also be applied either to
+  the current plot or to all selected plots
+
+- the menu item "Show inert atoms" can be checked and unchecked
+
+- the structure can be plotted without automatically calculating
+  the differential displacements (lengths of arrows). Then,
+  the nearest neighbor list need not be automatically calculated
+  and the plotting is much faster. This is accomplished by
+  setting in .ddplot:  arrNeighbors,0  
+
+= all static arrays are changed to dynamic arrays defined by
+  the class TArray (derived types DVector, DMatrix, ...) and
+  dynamic allocation is used instead of the static declaration
+  of the size of these arrays
+
+- fixed the positions of magnitudes of edge dislocations after
+  zooming
+
+- added a new feature that allows one to compare the DD maps
+  from two plots and plot +/- between the atoms. The signs mean
+  that the difference in arrow lengths is either positive (+)
+  or negative (-) where the size of the sign says how much.
+  The only requirements are:
+     * identical number of atoms in the two plots
+     * identical neighbor lists (i.e. compatible structures)
+  It means that we can compare the same blocks for different
+  metals, e.g. Mo and W, because the only difference is the
+  lattice parameter and not the crystal structure.
+  This comparison can be done for both edge and screw components.
+
+- scaling of arrows in the edge view is also precomputed
+  in advance - see calcEdgeScaling().
+
+- the scaling of arrows in the screw view is now precomputed
+  in advance and is not calculated over and over during each plot.
+  This is done in function calcScrewScaling().
+
+- the nearest neighbor list is now unidirectional in that it
+  stores only the neighbors (i,j) where j>i. This saves a lot
+  of time when plotting the arrows (no need to check is the
+  arrow is already plotted).
+
+
+October 28, 2005 | version 2.5
+
+- no error about MAX_NEIGHBOR occurs when NeighRCut is too large
+  for a plot - instead ddplot asks user to input a smaller
+  cut-off radius for the plot to be displayed
+
+- ddplot can display the coordinate system of the block (Ctrl+C),
+  several bugs related to the transformation of coordinates
+  corrected
+
+- when started in the verbose mode 'ddplot -v', ddplot will show
+  where in the code an error has occurred (the line starts with
+  an exclamation mark '!')
+
+
+September 5, 2005 | version 2.4
+
+- ddplot can be called as 'ddplot -v' to switch on the verbose
+  mode in which extensive information is echoed in the terminal
+  window
+
+- it is possible to select particular Z-layer(s) for which the
+  differential displacements are to be plotted
+
+- magnitudes of differential displacements are printed also for
+  edge dislocations
+
+- flipping the picture about X, Y or Z axis
+
+- neighbors are now searched using the linked neighbor list. The
+  same holds for the RDF => the time to plot the structure 
+  decreased tremendously for large blocks.
+
+- fixed wrong plotting of the atomic numbers (used to be numbered
+  from 0, now from 1)
+
+- fixed the wrong calculation of the RDF - it is now fully 3-D
+
+- added support for blocks which contain many z-layers, not only
+  three. When the block contains many z-layers, hit "Z" to see
+  a small inset showing all z-layers in the block and also
+  those which are currently considered for plotting relative
+  displacements). The full plot of all atoms in the block
+  can be invoked by choosing the corresponding item from menu.
+
+- bounding box fixed - it is read using gs and replaced in the
+  generated PS file.
+
+- correct identification of the same layer if the z-coordinate
+  for two atoms is not exactly the same number - the tolerance
+  is 1e-4 - e.g. atoms with z-coordinates 0.4999 and 0.5 are
+  regarded to lie in the same layer. This makes sure that the
+  plot does not contain a bunch of differently colored atoms.
+
+- plotting of grain boundaries - automatically recognized that
+  the .PLT file contains a grain boundary data and shows the 
+  grain boundary as a line
+
+- plotting of inert atoms (if the SBOP block is read in). If the
+  inert atoms are somehow shifted from their expected positions,
+  probably the block is in the old format of BOP (LEN corresponds
+  to the real size of the block / lattice parameter and not to
+  the periodicity along the three axes) 
+
+- can read directly the block of BOP (e.g. block.out) - just
+  change the wildcard at the bottom of the Open file dialog and
+  find the block(s) you wish to display
+
+- information about the relaxation of the block which is inserted
+  at the end of the .PLT file can now be displayed directly in
+  ddplot (no editing allowed)
+
+
+December 11, 2004 | version 2.3
+
+- ddplot has can now read and save the plot file in a special
+  .dd format which will (in future) include all important
+  information about the block - orientation,
+  periodicity, information about the default view (screw/edge
+  components, etc.). 
+
+- specification of the coordinate system of the block (this will be
+  needed for different coordinate transformations like rotating
+  the block, flipping, etc.)
+
+- resizing of the plotting area by dragging the window added
+
+- added progress bar when loading plots into the program - the
+  process can be stopped anytime a user desires
+
+- correct plotting od edge displacements - the length of an arrow
+  corresponds to relative displacement between the two atoms in 
+  the plane of the figure. If the relative displacement in any
+  direction is larger than 1/2*periodicity in this direction,
+  the length of the arrow is set to the relative displacement
+  modulo (1/2*periodicity)
+
+- wrong assignment of colors and line thickness for blocks with many
+  layers fixed. This problem appeared when the number of layers in the
+  block was larger than the number of specified colors (e.g. in
+  the .ddplot file)
+
+- plotting of the traces of the planes in the zone of the
+  perpendicular axis added. This is very useful when we need
+  to decide under which angle the dislocation glided.
+
+
+September 29, 2004 | version 2.2
+
+- the error caused by closing a widget which is currently being
+  painted in fixed - p->end(); at the end of paintEvent removed
+  this bug
+
+- changed settings under "Operations" and "Appearance" is applied
+  to all selected widgets
+
+- fixed major bug that caused segfaults on MacOS X - two functions
+  drawIt and printIt added instead of using one paintEvent
+
+- SetAtomStyle is now written such that it takes its appearance
+  from the datomstyle.ui and it no longer has two constructors -
+  one SetAtomStyle::SetAtomStyle (overloaded) and 
+  DAtomStyle::DAtomStyle (the original one)
+- porting to MacOS 10.2+ started
+
+
+July 30, 2004  | version 2.1
+
+- Fixed the bug that caused freezing when user opened a file
+  (it was caused by having WFlags f=WShowModal in the explicit
+  constructor QPlotWidget::QPlotWidget)
+
+- Dialog for selecting plots
+
+- Animation file contains only those plots that are selected
+
+- Dialog for setup up the animation process in ImageMagick
+
+
+May 17, 2004  | version 2.0.002
+
+- Menu items are correctly checked also after reading the settings
+  from the .ddplot file
+
+- In the dialog window for changing the appearance of arrows,
+  the button OK is made default
+
+
+May 14, 2004  |  version 2.0.001
+
+- Menu items are made invisible is they cannot be currently used
+
+- Menu items can now be checked and unchecked
+
+- Status bar is correctly repainted after changing the factor for
+  scaling displacements
+
+#######################################################################
+
+Undocumented "prehistoric" releases
+
+- User settings can be stored in $HOME/.ddplot - after the start of
+  ddplot, it automatically looks for this file. If it does not exist,
+  the default settings will be used.

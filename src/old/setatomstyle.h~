@@ -1,0 +1,33 @@
+#ifndef SETATOMSTYLE_H
+#define SETATOMSTYLE_H
+
+#include <qdialog.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qpushbutton.h>
+
+#include "ui_datomstyle.h"
+
+#include "ddplot.h"
+#include "pltwin.h"
+#include "darray.h"
+
+
+class SetAtomStyle: public Ui::DAtomStyle
+{
+Q_OBJECT
+public:
+  DArray<QColor,2> zColor;
+
+  SetAtomStyle( PltWin *pwid );
+  void setData(void);
+  bool verify();
+
+public:
+  PltWin *pw;
+
+public slots:
+  void setColor( int row, int col ); 
+};
+
+#endif
