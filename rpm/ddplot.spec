@@ -5,9 +5,12 @@ Summary:        Visualise dislocations by two-dimensional differential displacem
 Version:        4.0
 Release:        0
 Source:         %{name}-%{version}.tar.xz
-BuildRequires:  libqt4-devel update-desktop-files
+BuildRequires:  libqt4-devel
+%if 0%{?suse_version}
+BuildRequires:  update-desktop-files
+BuildRequires:  fdupes
+%endif
 Url:           http://groger.ipm.cz/download/ddplot/ddplot.html
-Url:           https://github.com/dmt4/ddplot
 BuildRoot:     %{_tmppath}/%{name}-%{version}-build
 
 
@@ -43,7 +46,11 @@ install -D -m 755 -s bin/%{name} %{buildroot}%{_bindir}/%{name}
 install -D -m 644 ico/%{name}-ico.png %{buildroot}%{_datadir}/pixmaps/%{name}.png
 install -D -m 755 ico/%{name}.desktop %{buildroot}%{_datadir}/applications/%{name}.desktop
 
+%if 0%{?suse_version}
 %suse_update_desktop_file %{name}
+%fdupes -s $RPM_BUILD_ROOT
+%endif
+
 
 %clean
 rm -rf %{buildroot}
