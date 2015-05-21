@@ -29,11 +29,3 @@ double vDotProduct( double v1[], double v2[], int nitems=3 )
 }
 
 
-void swap( double &val1, double &val2 )
-{
-  double keep;
-
-  keep = val1;
-  val1 = val2;
-  val2 = keep; 
-}

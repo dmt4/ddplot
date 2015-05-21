@@ -155,8 +155,8 @@ void quicksort(DMatrix &list, int lo, int hi)
     while (list(j,1)>x) j--;
 
     if (i<=j) {
-      swap(list(i,1),list(j,1));
-      swap(list(i,2),list(j,2));
+      std::swap(list(i,1),list(j,1));
+      std::swap(list(i,2),list(j,2));
       i++;
       j--;
     }

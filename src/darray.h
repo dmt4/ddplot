@@ -70,10 +70,6 @@ public:
 };
 
 
-// prohozeni dvou hodnot
-template <class T> void swap(T &a, T &b);
-
-
 /*------------------------------------------------------------------------------------------------
   class DArray - derived types
 ------------------------------------------------------------------------------------------------*/
@@ -648,17 +644,6 @@ void DArray<T,rank>::Resize(int inew, ...)
   data = (T *) malloc(items*sizeof(T));
   memcpy(data, new_data, items*sizeof(T));
   free(new_data);
-}
-
-
-// swap two numbers
-template <class T>
-void swap(T &a, T &b)
-{
-  T dum;
-  dum = a;
-  a = b;
-  b = dum;
 }
 
 #endif
