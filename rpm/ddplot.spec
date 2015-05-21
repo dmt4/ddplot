@@ -37,7 +37,11 @@ Main features:
 %setup -q 
 
 %build
-qmake 
+%if 0%{?suse_version}
+qmake
+%else
+qmake-qt4
+%endif
 make %{?_smp_mflags}
 
 %install
