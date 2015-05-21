@@ -1,7 +1,7 @@
 Name:           ddplot
 License:        GPLv2+
 Group:          Productivity/Scientific/Other
-Summary:        Visualization of dislocations by two-dimensional differential displacement maps
+Summary:        Visualise dislocations by two-dimensional differential displacement maps
 Version:        4.0
 Release:        0
 Source:         %{name}-%{version}.tar.xz
@@ -12,7 +12,7 @@ BuildRoot:     %{_tmppath}/%{name}-%{version}-build
 
 
 %description
-This simple program visualizes relative displacements in dislocated crystals using differential displacement maps. In this projection, the displacements are depicted as arrows whose lengths correspond to the relative displacements of the neighboring atoms. The output is given as a Postscript figure, animation, .XYZ file for JMol or standard .CFG for AtomEye.
+This simple program visualises relative displacements in dislocated crystals using differential displacement maps. In this projection, the displacements are depicted as arrows whose lengths correspond to the relative displacements of the neighboring atoms. The output is given as a Postscript figure, animation, .XYZ file for JMol or standard .CFG for AtomEye.
 
 Main features:
  * plotting of atomic structure
