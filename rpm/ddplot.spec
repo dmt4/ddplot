@@ -1,5 +1,5 @@
 Name:           ddplot
-License:        GPLv2+
+License:        GPL-2.0+
 Group:          Productivity/Scientific/Other
 Summary:        Visualise dislocations by two-dimensional differential displacement maps
 Version:        4.0
