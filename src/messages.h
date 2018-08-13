@@ -12,11 +12,6 @@
   "In the latter case, enter manually NeighRCut in .ddplot file to avoid\n" \
   "this message."
 
-#define crit_MAXCELL_Exceeded \
-  "During the construction of the linked neighbor list:\n" \
-  "Number of cells along some axis is greater than MAX_CELL.\n" \
-  "To avoid this error, increase MAX_CELL."
-
 #define crit_OutOfMemory \
   "Out of memory signal received when trying to\n" \
   "allocate space for data."
@@ -76,6 +71,24 @@
   "The Z-tolerance must be a number.\n" \
   "Characters and special symbols are not permitted."
 
+#define err_DPosPeierlsNabarro \
+  "It was impossible to identify the dislocation position\n" \
+  "using the Peierls-Nabarro concept."
+
+#define err_DPosParallelLines \
+  "No intersection of two parallel lines exists."
+
+#define err_DPosNoIntersection \
+  "Could not find the intersection of two lines when calculating\n" \
+  "the dislocation position using the Peierls-Nabarro model."
+
+#define err_DPosCannotFind3rdNode \
+  "Cannot determine the 3rd node for interpolation of the dislocation\n" \
+  "position using the Lagrange polynomial."
+
+#define err_ProjVectNotValid \
+  "The projection vector is not valid because its dot product with the\n" \
+  "Burgers vector is zero."
 
 // Questions
 

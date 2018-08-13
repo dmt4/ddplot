@@ -5,8 +5,8 @@
 #include "darray.h"
 
 
-bool InitNeighborList( PltWin *pw, IMatrix &nnlist );
-bool RelNeighborList( PltWin *pw, int rmax, IMatrix &nnlist );
+bool InitNeighborList( PltWin *pw, IMatrix &nnlist, IVector &nnum );
+bool RelNeighborList( PltWin *pw, int rmax, IMatrix &nnlist, IVector &nnum );
 
 void NeighInit( PltWin *pw );
 void NeighList( PltWin *pw );

@@ -5,7 +5,7 @@ ScalePos::ScalePos(PltWin *parent) : QDialog(parent)
 {
   pw = parent;
   setupUi(this);
-  connect(btAuto, SIGNAL(clicked()), this, SLOT(autoScale()));
+  connect(btAuto, SIGNAL(released()), this, SLOT(autoScale()));
 }
 
 

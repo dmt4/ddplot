@@ -4,15 +4,14 @@
 SelectZLayers::SelectZLayers(QDialog *parent) : QDialog(parent)
 {
   setupUi(this);
-  connect(btSelAll, SIGNAL(clicked()), this, SLOT(selectAll()));
-  connect(btUnselAll, SIGNAL(clicked()), this, SLOT(unselectAll()));
+  connect(btSelAll, SIGNAL(released()), this, SLOT(selectAll()));
+  connect(btUnselAll, SIGNAL(released()), this, SLOT(unselectAll()));
 }
 
 
 void SelectZLayers::selectAll()
 {
-  unsigned int i;
-  
+  unsigned int i;  
   for (i=0; i<zLayers->count(); i++)
     zLayers->setItemSelected(zLayers->item(i), true);
 }
@@ -21,7 +20,6 @@ void SelectZLayers::selectAll()
 void SelectZLayers::unselectAll()
 {
   unsigned int i;
-  
   for (i=0; i<zLayers->count(); i++)
     zLayers->setItemSelected(zLayers->item(i), false);
 }

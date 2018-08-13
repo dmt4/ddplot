@@ -15,7 +15,7 @@ class PltWin : public QWidget
 public:
   QString FName;
   DArray<QColor,2> zColorLayer;   // colors of the atomic layers (1=foreground, 2=background)
-
+  
   // coordinates of atoms and their relative displacements
   DMatrix xyzRel;          // coordinates of atoms in the relaxed configuration
   DMatrix xyzInit;         // coordinates of atoms in the initial (unrelaxed) configuration
@@ -31,6 +31,7 @@ public:
   DVector blSize;          // calculated size of the block in the x,y,z direction
   DVector xyzMin, xyzMax;
   DVector period;          // periodicity in the three directions
+  double latpar=1.0;       // lattice parameter
   char *tail;              // the tail of the .plt file containing the relaxation info (text)
   int TailSize;            // size of the trailing info stored in <tail>
 
@@ -52,7 +53,7 @@ public:
 
   // grain boundaries
   double gbYcoor;          // y-position of the grain boundary
-  IVector gbLayer;         // grain boundary layer in which the atom lies(upper grain>0, lower grain<0)
+  IVector gbLayer;    // grain boundary layer in which the atom lies(upper grain>0, lower grain<0)
   bool isGBfile;           // true if the file contains a grain boundary data
   bool showGB;             // true if the grain boundary is being plotted 
 
@@ -68,10 +69,11 @@ public:
   IMatrix atomScreen;      // coordinates of atoms on the screen [pixels]
   int xBorder,yBorder,xOffset,yOffset;
   IVector xyzCen;
-  int shortestArrow;    // shortest arrow to be plotted (in pixels)
-  int thicknessArrow;   // thickness of an arrow (in pixels)
-  int plotType;               // type of plot
-  int DispComponent;          // component of the displacements plotted
+  IVector aorder;          // order in which the atoms are to be plotted
+  int shortestArrow;       // shortest arrow to be plotted (in pixels)
+  int thicknessArrow;      // thickness of an arrow (in pixels)
+  int plotType;            // type of plot
+  int DispComponent;       // component of the displacements plotted
   int AtomPos;             // plotting of atomic positions (RELAXED, UNRELAXED)  
   int PTAngle;             // angle between two neighboring traces of planes plotted
   bool PrintMagDisp;       // print magnitudes of displacements (value/a) ?
@@ -82,14 +84,15 @@ public:
   bool InertAtoms;         // plot inert atoms ?
   bool showCSys;           // is the coordinate system plotted ?
   bool corrEdgeCompBCC;    // correction of the orientations of edge components for screw in BCC
+  bool antialiase;         // should the antialiasing be applied ?
 
-  FILE *feps;              // handle to the EPS file
+  FILE *feps;              // handle of the file into which we print postscript
   bool paintEPS;           // paint in the EPS file ?
 
   // radial distribution function
   DVector RdfDist;         // distances of the first, second, etc., nearest neighbors
   int arrNeighNum;         // number of different neighbor distances to be considered
-  IVector arrNeighbors;    // which neighbor distances (1=first, 2=second, etc.)      
+  IVector arrNeighbors;    // which neighbor distances (1=first, 2=second, etc.)
   IVector RdfNum;          // numbers of 1st, 2nd, 3rd, ..., nearest neighbors
   int RdfNNeigh;           // how many nearest neighbors ? (3=first, second and third)
 
@@ -100,13 +103,39 @@ public:
   IVector list;            // linked neighbor list
   IArray3 head;            // index of a head atom in each cell
   IMatrix NeighListInit, NeighListRel;
+  IVector numNeighInit, numNeighRel;  // number of neighbors of each atom in the initial and relaxed config.
   DArray3 scaleArr;        // scaling factors for plotting the arrows
+  int nnpairs;             // number of neighbor pairs of atomic neighbors
   bool showNeighCells;     // true if the division into cells is to be displayed
 
+  // picking of atoms for the calculation of the Burgers vector
+  IVector apicked;         // atoms picked
+  DMatrix dpoly;           // (ndpoly_init,2) polygon with vertices of the polygon containing the dislocation center (initial conf.)
+  int doAfterMouseClicks;  // the action to be done after double-click
+  int napicked;            // number of atoms picked
+  int ncalcdpos;           // number of calculations of the dislocation position (when shuffling the cutting order)
+  int ndpoly;              // number of nodes defining the dislocation polygon
+  bool clickAtoms;         // true if we are allowed to select atoms by clicking
 
-  explicit PltWin( QWidget *parent=0, Qt::WindowFlags f=0 );
+  // displacements of atoms in the direction of the Burgers vector
+  DMatrix dposchain;       // positions of the dislocation in individual chains of atoms
+  DMatrix ubchain;         // displacements of atoms || to the Burgers vector (ub)
+  DMatrix dpath;           // path of the dislocation
+  IMatrix achain;          // ids of atoms in each chain
+  IVector nachain;         // numbers of atoms in each chain
+  DVector ubchain_min;     // minimum ub along each chain
+  DVector ubchain_max;     // maximum ub along each chain
+  double xdavg, ydavg;     // approximate position of the dislocation
+  int ndpath;              // number of nodes defining the dislocation pathway
+  int nchain;              // number of chains of atoms
+  int applyHow;            // calculate the dislocation position only for this plot (0) or for all (1)?
+
+  QVector<QImage> sphere;  // rendered spheres with colors distinguishing atomic types
+  
+  PltWin(QWidget *parent=0, Qt::WindowFlags f=0);
   ~PltWin();
-  void copy( PltWin *p );
+  PltWin &operator=(const PltWin &value);
+
   void paintEvent( QPaintEvent * );
   void plotEdgeComponent(QPainter *p);
   void plotScrewComponent(QPainter *p);
@@ -114,35 +143,53 @@ public:
   void plotNyeTensor(QPainter *p);
 
 protected:
+  virtual void mouseDoubleClickEvent( QMouseEvent * event );
+  virtual void mousePressEvent( QMouseEvent * event );
   virtual void resizeEvent( QResizeEvent * );
 
 public:
   void drawIt(QPainter *p);
   void printIt(QPrinter *printer);
 
-  bool DrawArrow( QPainter *p, double x0, double y0, double x1, double y1 );
-  void DrawCircle( QPainter *p, int atom, double x, double y, int dia);
-  void DrawLine( QPainter *p, double x0, double y0, double x1, double y1, int addx, int addy);
-  void DrawPlaneTraces( QPainter *p, double x0, double y0, double x1, double y1 );
-  void DrawText( QPainter *p, double x, double y, QString txt );
-  void Pan( double xsteps, double ysteps );
+  bool DrawArrow(QPainter *p, double xw0, double yw0, double xw1, double yw1 );
+  void DrawAtom(QPainter *p, int atom, double xw, double yw, int dia);
+  void DrawLine(QPainter *p, double xw0, double yw0, double xw1, double yw1);
+  void DrawPlaneTraces(QPainter *p, double xw0, double yw0, double xw1, double yw1);
+  void DrawText(QPainter *p, double xw, double yw, QString txt, Qt::AlignmentFlag align=Qt::AlignLeft, float ang=0.0);
+  void Pan(double xsteps, double ysteps);
   void SetGeometry();
-  void ShowActiveZLayers( QPainter *p );
-  void ShowCSys( QPainter *p );
-  void Zoom( double zfact );
+  void ShowActiveZLayers(QPainter *p);
+  void ShowColorMap(QPainter *p);
+  void ShowCSys(QPainter *p);
+  void Zoom(double zfact);
+
+  void PrepareZColoredSpheres();
+  
+  void xyScreenToWorld(int xs, int ys, double &xw, double &yw);
+  void xyWorldToScreen(double xw, double yw, int &xs, int &ys);
+
+  // declared in pltwin-load.cpp
+  bool LoadBOP(QString fname);
+  bool LoadDD(QString fname);
+  bool LoadGB(QString fname, long int *blstart, PltWin *initConf);
+  bool LoadPLT(QString fname);
+  bool LoadXYZ(QString fname);
 
 public:
   void calcEdgeRelDisp();
   void calcScrewRelDisp();
+  bool calcProjRelDisp();
   void calcNyeTensor();
-  bool CompareDisp( PltWin *p1, PltWin *p2, int comp );
+  bool CompareDisp(PltWin *p2, int comp);
   int FindNearestAtom( int x, int y );
-  bool LoadBOP( QString fname );
-  bool LoadDD( QString fname );
-  bool LoadGB( QString fname, long int *blstart, PltWin *initConf );
-  bool LoadPLT( QString fname );
-  bool LoadXYZ( QString fname );
-  bool PrepareBlock( bool toggle_inert );
+  bool InitBlockGeometry(bool toggle_inert);
+  bool InitBlockANeighbors();
+
+signals:
+  void signalDPosPeierlsNabarro_interm();
+  void signalDPosPeierlsNabarro_end();
+  void signalDefineBurgersCircuit_end();
+  void signalDefineCalcAtomDispl_end();
 };
 
 #endif

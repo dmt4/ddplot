@@ -7,7 +7,7 @@
 char *sformat="%10.4lg";
 
 
-void ErrMsg(char *msg, char *fun)
+void ErrMsg(const char *msg, const char *fun)
 {
   printf("[%s] :: %s\n",fun,msg);
   exit(EXIT_FAILURE);
@@ -34,83 +34,6 @@ std::ostream &operator<<(std::ostream &outp, DArray<T,rank> &A)
   return outp;
 }
 
-
-/*
-ostream &operator<<(ostream &outp, DMatrix &A)
-{
-  int i,j,imax,jmax;
-
-  imax = A.Length(1);
-  jmax = A.Length(2);
-
-  for (i=1; i<=imax; i++) {
-    printf("[ ");
-    for (j=1; j<=jmax; j++) {
-      printf(sformat,A(i,j));
-      if (j<jmax)
-        printf("  ");
-    }
-    printf(" ]\n");
-  }
-
-  return outp;
-}
-
-
-ostream &operator<<(ostream &outp, DArray3 &A)
-{
-  int i,j,k,imax,jmax,kmax;
-
-  imax = A.Length(1);
-  jmax = A.Length(2);
-  kmax = A.Length(3);
-
-  for (k=1; k<=kmax; k++) {
-    printf("(*,*,%d) = \n",k);
-    for (i=1; i<=imax; i++) {
-      printf("[ ");
-      for (j=1; j<=jmax; j++) {
-        printf(sformat,A(i,j,k));
-        if (j<jmax)
-          printf("  ");
-      }
-      printf(" ]\n");
-    }
-  }
-
-  return outp;
-}
-
-
-ostream &operator<<(ostream &outp, DArray4 &A)
-{
-  int i,j,k,l,imax,jmax,kmax,lmax;
-
-  imax = A.Length(1);
-  jmax = A.Length(2);
-  kmax = A.Length(3);
-  lmax = A.Length(4);
-
-  for (l=1; l<=lmax; l++) {
-    for (k=1; k<=kmax; k++) {
-      printf("(*,*,%d,%d) = \n",k,l);
-      for (i=1; i<=imax; i++) {
-        printf("[ ");
-        for (j=1; j<=jmax; j++) {
-          printf(sformat,A(i,j,k,l));
-          if (j<jmax)
-            printf("  ");
-        }
-        printf(" ]\n");
-      }
-    }
-  }
-
-  return outp;
-}
-
-*/
-
 //---------------------------------------------------------------------------------------------------
 
 // length of a vector
@@ -130,19 +53,6 @@ double vlength(DVector &vect)
 }
 
 
-// supremum - nejblizsi vyssi cele cislo:  sup(1.3)=2, sup(5.8)=2, sup(6)=6
-int sup(double value)
-{
-  int fvalue;
-
-  fvalue = (int) floor(value);
-  if (value>fvalue)
-    return fvalue+1;
-  else
-    return fvalue;
-}
-
-
 // implementation of the quicksort algorithm
 void quicksort(DMatrix &list, int lo, int hi)
 {
@@ -155,8 +65,8 @@ void quicksort(DMatrix &list, int lo, int hi)
     while (list(j,1)>x) j--;
 
     if (i<=j) {
-      std::swap(list(i,1),list(j,1));
-      std::swap(list(i,2),list(j,2));
+      swaparr(list(i,1),list(j,1));
+      swaparr(list(i,2),list(j,2));
       i++;
       j--;
     }

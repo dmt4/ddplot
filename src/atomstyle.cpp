@@ -8,6 +8,7 @@ AtomStyle::AtomStyle(PltWin *parent) : QDialog(parent)
 {
   pw = parent;
   zColor.Allocate(pw->NumZLayers,2);
+  zColor.EnlargeStep(1,0);
   setupUi(this);
   connect(atomTable, SIGNAL(cellClicked(int,int)), this, SLOT(setColor(int,int)));
 }
@@ -15,7 +16,7 @@ AtomStyle::AtomStyle(PltWin *parent) : QDialog(parent)
 
 void AtomStyle::setColor(int row, int col)
 {
-  if (col==3 || col==4) {
+  if ((col==3 || col==4) && row+1 <= pw->NumZLayers+1) {
     QColor color = QColorDialog::getColor(zColor(row+1,col-2), atomTable);
     
     if (color.isValid()) {
@@ -23,6 +24,13 @@ void AtomStyle::setColor(int row, int col)
       wcol->setBackground(color);
       atomTable->setItem(row, col, wcol);
       zColor(row+1,col-2) = wcol->backgroundColor();
+      if (row+1 > pw->NumZLayers) {
+	pw->NumZLayers = row+1;
+	QTableWidgetItem *witem1 = new QTableWidgetItem(QString("%1").arg(10));
+	atomTable->setItem(row, 1, witem1);
+	QTableWidgetItem *witem2 = new QTableWidgetItem(QString("%1").arg(1));
+	atomTable->setItem(row, 2, witem2);
+      }
     }
   }
 }

@@ -10,64 +10,58 @@
 
 
 /*------------------------------------------------------------------------------------------------
-  constants
-------------------------------------------------------------------------------------------------*/
-
-const int MAXDIM = 4;      /* maximum number of dimensions supported by this class */
-
-
-/*------------------------------------------------------------------------------------------------
   class DArray - declarations
 ------------------------------------------------------------------------------------------------*/
 
 template <class T, int rank>
 class DArray {
 public:
-  T *data;
+  int items=0;           // total number of items in the array
+  int dim=0;              // dimension of the array (1=vector, 2=matrix, etc.
+  T *data=NULL;         // stores the data
+  int *len=NULL;             // number of items along the specific directions of the array
+  int *estep=NULL;           // jumps for "inflating" of the array (auto_enlarge must be true)
+  bool auto_enlarge=false;    // is the enlarging of the structure permitted ?
 
-  long items;           /* total number of items in the array */
-  int dim;              /* dimension of the array (2 for matrix, 3 for tensor Tijk, etc. */
-  int len[MAXDIM];      /* number of items along the specific directions of the array */
-  int estep[MAXDIM];    /* jumps for "inflating" of the array (auto_enlarge must be true) */
-  bool auto_enlarge;    /* is the enlarging of the structure permitted ? */
+  DArray() { }                    // constructor without allocation
+  DArray(int ilen, ...);          // constructor with allocation of space for data
+  DArray(const DArray<T,rank> &t);      // copy constructor
+  ~DArray();                      // destructor
 
-  DArray() { data = NULL; };      /* constructor without allocation */
-  DArray(int ilen, ...);          /* contructor with allocation of space for data */
-  DArray(DArray<T,rank> &t);      /* copy constructor */
-  ~DArray();                      /* destructor */
+  void Allocate(int ilen, ...);   // allocation of the space for data
+  void Free();                    // freeing the space occupied by data
 
-  void Allocate(int ilen, ...);   /* allocation of the space for data */
-  void Free();                    /* freeing the space occupied by data */
+  T &operator()(int i);           // read/write into the array; these are defined explicitly for
+  T &operator()(int i, int j);    // each rank of array for fast access
+  T &operator()(int i, int j, int k);
+  T &operator()(int i, int j, int k, int l);
 
-  T &operator()(int i, ...);
-
-  DArray<T,rank> &operator+(DArray<T,rank> &t);
-  DArray<T,rank> &operator+=(DArray<T,rank> &t);
-  DArray<T,rank> &operator-(DArray<T,rank> &t);
-  DArray<T,rank> &operator-=(DArray<T,rank> &t);
-  DArray<T,rank> &operator=(T value);
-  DArray<T,rank> &operator=(DArray<T,rank> &t);
-  DArray<T,rank> &operator*(T value);
-  DArray<T,rank> &operator*(DArray<T,rank> &A2);
-  DArray<T,rank> &operator/(T value);
+  DArray<T,rank> &operator=(const T &value);
+  const DArray<T,rank> operator+(const T &value);
+  const DArray<T,rank> operator-(const T &value);
+  const DArray<T,rank> operator*(const T &value);
+  const DArray<T,rank> operator/(const T &value);
+  DArray<T,rank> &operator+=(const T &value);
+  DArray<T,rank> &operator-=(const T &value);
+  DArray<T,rank> &operator*=(const T &value);
+  DArray<T,rank> &operator/=(const T &value);
+  
+  DArray<T,rank> &operator=(const DArray<T,rank> &t);
+  DArray<T,rank> &operator+(const DArray<T,rank> &t);
+  DArray<T,rank> &operator-(const DArray<T,rank> &t);
+  DArray<T,rank> &operator*(const DArray<T,rank> &A2);
+  DArray<T,rank> &operator+=(const DArray<T,rank> &t);
+  DArray<T,rank> &operator-=(const DArray<T,rank> &t);
 
   void EnlargeStep(int istep, ...);
-
-  // vyplneni pole hodnotou value
-  void Fill(T value);
-
-  // zjisteni delky tenzoru v dir-tem smeru
-  int Length(int dir) { return len[dir-1]; }
-
-  // zjisteni dimenze pole
-  int Dim(void) { return dim; }
-
-  // maximum item in an array
-  double Max(DArray<T,rank> &arr);
-
-  // zvetseni struktury podle skoku estep (auto_enlarge=true)
-  void Resize(int i, ...);
+  void Fill(T value);                         // assign all components of the array the given value
+  int Length(int dir) { return len[dir-1]; }  // get the length of the array in the direction dir
+  int Dim(void) { return dim; }               // get the dimension of the array
+  double Max(DArray<T,rank> &arr);            // maximum item in an array
+  void Resize(int i, ...);                    // resize the array by estep (if auto_enlarge=true)
 };
+
+template <class T> void swaparr(T &a, T &b);  // swap two values
 
 
 /*------------------------------------------------------------------------------------------------
@@ -102,68 +96,65 @@ void disp(DMatrix &A);
 void disp(DArray3 &A);
 void disp(DArray4 &A);
 
-// handling of error messages
-void ErrMsg(char *msg, char *fun);
-
-// velikost vektoru
-double vlength(DVector &vect);
-
-// supremum - nejblizsi vyssi cele cislo:  sup(1.3)=2, sup(5.8)=2, sup(6)=6
-int sup(double value);
-
-// trideni podle i-teho sloupce
-void sort(DMatrix &mold, int start, int end, int col, IVector &indexes);
+void ErrMsg(const char *msg, const char *fun);   // handling of error messages
+double vlength(DVector &vect);       // velikost vektoru
+void sort(DMatrix &mold, int start, int end, int col, IVector &indexes);  // sort by the i-th column
 
 
 /*------------------------------------------------------------------------------------------------
   class DArray - constructors and destructors
 ------------------------------------------------------------------------------------------------*/
 
-// construktor for an array of any rank
+// constructor for an array of any rank
 template <class T, int rank>
 DArray<T,rank>::DArray(int ilen, ...)
 {
-  char *fun="DArray<T,rank> (constructor)";
   va_list args;
-  int i;
 
-  va_start(args,ilen);
   dim = rank;
+  len = (int *) malloc(dim*sizeof(int));
+  estep = (int *) malloc(dim*sizeof(int));
+
+  va_start(args, ilen);
   len[0] = items = ilen;
-  for (i=1; i<rank; i++) {
-    len[i] = va_arg(args,int);
+  for (int i=1; i<rank; i++) {
+    len[i] = va_arg(args, int);
     items *= len[i];
   }
-  
-  memset(&len[rank], 0, (MAXDIM-rank)*sizeof(int));
   va_end(args);
 
   auto_enlarge = false;
-  memset(estep, 0, MAXDIM*sizeof(int));
+  std::fill_n(estep, dim, 0);
 
   data = (T *) malloc(items*sizeof(T));
-  if (data==NULL && items>0) 
+  if (data==NULL && items>0)  {
+    const char *fun="DArray<T,rank> (constructor)";
     ErrMsg("Allocation of the space for data unsuccessful.", fun);
+  }
   Fill(0);
 }
 
 
 // copy constructor
 template <class T, int rank>
-DArray<T,rank>::DArray(DArray<T,rank> &t)
+DArray<T,rank>::DArray(const DArray<T,rank> &t)
 {
-  char *fun="DArray<T,rank> (copy constructor)";
   dim = t.dim;
   items = t.items;
   auto_enlarge = t.auto_enlarge;
 
-  memcpy(len, t.len, MAXDIM*sizeof(int));
-  memcpy(estep, t.estep, MAXDIM*sizeof(int));
+  if (len==NULL) len = (int *) malloc(dim*sizeof(int));
+  if (estep==NULL) estep = (int *) malloc(dim*sizeof(int));
+  memcpy(len, t.len, t.dim*sizeof(int));
+  memcpy(estep, t.estep, t.dim*sizeof(int));
 
+  if (data!=NULL) free(data);
   data = (T *) malloc(t.items*sizeof(T));
-  if (data==NULL && t.items>0) 
+  if (data==NULL && t.items>0) {
+    const char *fun="DArray<T,rank> (copy constructor)";
     ErrMsg("Allocation of the space for data unsuccessful.", fun);
-  memcpy(data,t.data,t.items*sizeof(T));
+  }
+  memcpy(data, t.data, t.items*sizeof(T));
 }
 
 
@@ -181,30 +172,30 @@ DArray<T,rank>::~DArray()
 template <class T, int rank>
 void DArray<T,rank>::Allocate(int ilen, ...)
 {
-  char *fun="DArray<T,rank>::Allocate";
   va_list args;
-  int i;
 
   // if the array is already allocated, free it first (this is safe !)
   Free();
 
-  va_start(args,ilen);
   dim = rank;
+  len = (int *) malloc(dim*sizeof(int));
+  estep = (int *) malloc(dim*sizeof(int));
+  va_start(args, ilen);
   len[0] = items = ilen;
-  for (i=1; i<rank; i++) {
-    len[i] = va_arg(args,int);
+  for (int i=1; i<rank; i++) {
+    len[i] = va_arg(args, int);
     items *= len[i];
   }
-
-  memset(&len[rank], 0, (MAXDIM-rank)*sizeof(int));
   va_end(args);
 
   auto_enlarge = false;
-  memset(estep, 0, MAXDIM*sizeof(int));
+  std::fill_n(estep, dim, 0);
 
   data = (T *) malloc(items*sizeof(T));
-  if (data==NULL && items>0) 
+  if (data==NULL && items>0) {
+    const char *fun="DArray<T,rank>::Allocate";
     ErrMsg("Allocation of the space for data unsuccessful.", fun);
+  }
 }
 
 
@@ -216,6 +207,19 @@ void DArray<T,rank>::Free()
     free(data);
     data = NULL;
   }
+
+  if (len!=NULL) {
+    free(len);
+    len = NULL;
+  }
+
+  if (estep!=NULL) {
+    free(estep);
+    estep = NULL;
+  }
+
+  dim = items = 0;
+  auto_enlarge = false;
 }
 
 
@@ -223,79 +227,176 @@ void DArray<T,rank>::Free()
   class DArray - operators
 ------------------------------------------------------------------------------------------------*/
 
-// reading/writing into the structure
+// reading/writing into a vector
 template <class T, int rank>
-T &DArray<T,rank>::operator()(int i, ...)
+T &DArray<T,rank>::operator()(int i)
 {
-  char *fun="DArray<T,rank>::operator()";
-  va_list args;
-  int idx[MAXDIM];
-  int ipar,mult,idx_data;
-
-  // reading of the idx into the array
-  va_start(args,i);
-  idx[0] = i;
-  for (ipar=1; ipar<dim; ipar++)
-    idx[ipar] = va_arg(args,int);
-  va_end(args);
-
-  // checking to see whether we are not writing/reading beyond the boundaries of the array
-  for (ipar=0; ipar<dim; ipar++) {
-    // do we read/write inside the array ?
-    if ((idx[ipar]<1 || idx[ipar]>len[ipar]) && !auto_enlarge)
-      ErrMsg("Attempt to read/write outside an array.",fun);      
-  }
-
-  // enlarge structure
   if (auto_enlarge) {
-    switch(dim) {
-      case 1:
-	if (idx[0]>len[0])
-	  Resize(idx[0]);
-	break;
-
-      case 2:
-	if (idx[0]>len[0] || idx[1]>len[1])
-	  Resize(idx[0],idx[1]);
-	break;
-
-      case 3:
-	if (idx[0]>len[0] || idx[1]>len[1] || idx[2]>len[2])
-	  Resize(idx[0],idx[1],idx[2]);
-	break;
-
-      case 4:
-	if (idx[0]>len[0] || idx[1]>len[1] || 
-	    idx[2]>len[2] || idx[3]>len[3])
-	  Resize(idx[0],idx[1],idx[2],idx[3]);
-	break;
+    if (i>len[0]) Resize(i);
+  } else {
+    if (i<1 || i>len[0]) {
+      const char *fun="DArray<T,rank>::operator(i)";
+      ErrMsg("Attempt to read/write outside an array.", fun);
     }
   }
-
-  // calculation of the index into the stack <data>
-  mult = 1;
-  idx_data = 0;
-  for (ipar=0; ipar<dim; ipar++) {
-    idx_data += (idx[ipar]-1)*mult;  // -1 because they are counted from 1
-    mult *= len[ipar];
-  }
-  return data[idx_data];
+  long pos = i-1;
+  return data[pos];
 }
 
 
+// reading/writing into a matrix
+template <class T, int rank>
+  T &DArray<T,rank>::operator()(int i, int j)
+{
+  if (auto_enlarge) {
+    if (i>len[0] || j>len[1]) Resize(i, j);
+  } else {
+    if (i<1 || i>len[0] || j<1 || j>len[1]) {
+      const char *fun="DArray<T,rank>::operator(i,j)";
+      ErrMsg("Attempt to read/write outside an array.", fun);
+    }
+  }
+  long pos = j-1 + len[1]*(i-1);
+  return data[pos];
+}
+
+
+// reading/writing into a rank-3 array
+template <class T, int rank>
+  T &DArray<T,rank>::operator()(int i, int j, int k)
+{
+  if (auto_enlarge) {
+    if (i>len[0] || j>len[1] || k>len[2]) Resize(i, j, k);
+  } else {
+    if (i<1 || i>len[0] || j<1 || j>len[1] || k<1 || k>len[2]) {
+      const char *fun="DArray<T,rank>::operator(i,j,k)";
+      ErrMsg("Attempt to read/write outside an array.", fun);
+    }
+  }
+  long pos = k-1 + len[2]*(j-1) + len[1]*len[2]*(i-1);
+  return data[pos];
+}
+
+
+// reading/writing into a rank-4 array
+template <class T, int rank>
+  T &DArray<T,rank>::operator()(int i, int j, int k, int l)
+{
+  if (auto_enlarge) {
+    if (i>len[0] || j>len[1] || k>len[2] || l>len[3]) Resize(i, j, k, l);
+  } else {
+    if (i<1 || i>len[0] || j<1 || j>len[1] || k<1 || k>len[2] || l<1 || l>len[3]) {
+      const char *fun="DArray<T,rank>::operator(i,j,k,l)";
+      ErrMsg("Attempt to read/write outside an array.", fun);
+    }
+  }
+  long pos = l-1 + len[3]*(k-1) + len[2]*len[3]*(j-1) + len[1]*len[2]*len[3]*(i-1);
+  return data[pos];
+}
+
+
+// fills the array with a constant value
+template <class T, int rank>
+DArray<T,rank> &DArray<T,rank>::operator=(const T &value)
+{ 
+  Fill(value); 
+  return *this; 
+}
+
+
+// overload of the addition operator
+template <class T, int rank>
+const DArray<T,rank> DArray<T,rank>::operator+(const T &value)
+{
+  DArray<T,rank> res = *this;
+  res += value;
+  return res;
+}
+
+
+// overload of the subtraction operator
+template <class T, int rank>
+const DArray<T,rank> DArray<T,rank>::operator-(const T &value)
+{
+  DArray<T,rank> res = *this;
+  res -= value;
+  return res;
+}
+
+
+// overload of the multiplication operator
+template <class T, int rank>
+const DArray<T,rank> DArray<T,rank>::operator*(const T &value)
+{
+  DArray<T,rank> res = *this;
+  res *= value;
+  return res;
+}
+
+
+// overload of the division operator
+template <class T, int rank>
+const DArray<T,rank> DArray<T,rank>::operator/(const T &value)
+{
+  DArray<T,rank> res = *this;
+  res /= value;
+  return res;
+}
+
+
+// overload of the += operator
+template <class T, int rank>
+DArray<T,rank> &DArray<T,rank>::operator+=(const T &value)
+{
+  for (int i=0; i<items; i++)
+    data[i] += value;
+  return *this;
+}
+
+
+// overload of the -= operator
+template <class T, int rank>
+DArray<T,rank> &DArray<T,rank>::operator-=(const T &value)
+{
+  for (int i=0; i<items; i++)
+    data[i] -= value;
+  return *this;
+}
+
+
+// overload of the *= operator
+template <class T, int rank>
+DArray<T,rank> &DArray<T,rank>::operator*=(const T &value)
+{
+  for (int i=0; i<items; i++)
+    data[i] *= value;
+  return *this;
+}
+
+
+// overload of the /= operator
+template <class T, int rank>
+DArray<T,rank> &DArray<T,rank>::operator/=(const T &value)
+{
+  for (int i=0; i<items; i++)
+    data[i] /= value;
+  return *this;
+}
+
+//----------------------------------------------------------------------------------------------------
+
 // addition of arrays if they are of the same dimension and extent
 template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator+(DArray<T,rank> &t)
+ DArray<T,rank> &DArray<T,rank>::operator+(const DArray<T,rank> &t)
 {
   char *fun="DArray<T,rank>::operator+";
   static DArray<T,rank> result = t;
-  unsigned int i;
 
   if (this->dim!=t.dim || this->items!=t.items)
     ErrMsg("Addition of dimensionally incompatible arrays.",fun);
 
   // can I make this faster (assembler code) ?
-  for (i=0; i<items; i++)
+  for (int i=0; i<items; i++)
     result.data[i] = data[i]+t.data[i];
 
   return result;
@@ -304,7 +405,7 @@ DArray<T,rank> &DArray<T,rank>::operator+(DArray<T,rank> &t)
 
 // operator of addition to the target
 template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator+=(DArray<T,rank> &t)
+DArray<T,rank> &DArray<T,rank>::operator+=(const DArray<T,rank> &t)
 {
   *this = *this+t;
   return *this;
@@ -313,17 +414,17 @@ DArray<T,rank> &DArray<T,rank>::operator+=(DArray<T,rank> &t)
 
 // operation of subtraction
 template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator-(DArray<T,rank> &t)
+DArray<T,rank> &DArray<T,rank>::operator-(const DArray<T,rank> &t)
 {
-  char *fun="DArray<T,rank>::operator-";
   static DArray<T,rank> result = t;
-  unsigned int i;
 
-  if (this->dim!=t.dim || this->items!=t.items)
-    ErrMsg("Subtraction of dimensionally incompatible arrays.",fun);
+  if (this->dim!=t.dim || this->items!=t.items) {
+    const char *fun="DArray<T,rank>::operator-";
+    ErrMsg("Subtraction of dimensionally incompatible arrays.", fun);
+  }
 
   // can I make this faster (assembler code) ?
-  for (i=0; i<items; i++)
+  for (int i=0; i<items; i++)
     result.data[i] = data[i]-t.data[i];
 
   return result;
@@ -332,56 +433,42 @@ DArray<T,rank> &DArray<T,rank>::operator-(DArray<T,rank> &t)
 
 // operator of subtraction from the target 
 template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator-=(DArray<T,rank> &t)
+DArray<T,rank> &DArray<T,rank>::operator-=(const DArray<T,rank> &t)
 {
   *this = *this-t;
   return *this;
 }
 
-
-// fill the entire array with a given value
-template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator=(T value)
-{ 
-  Fill(value); 
-  return *this; 
-}
-
+//----------------------------------------------------------------------------------------------------
 
 // copy operator (copies t to *this)
 template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator=(DArray<T,rank> &t)
+DArray<T,rank> &DArray<T,rank>::operator=(const DArray<T,rank> &t)
 {
-  char *fun="DArray<T,rank>::operator=(DArray)";
-
-  // important - free *this before the new allocation
+  size_t size;
+  
   Free();
 
   dim = t.dim;
   items = t.items;
   auto_enlarge = t.auto_enlarge;
-  memcpy(len, t.len, MAXDIM*sizeof(int));
-  memcpy(estep, t.estep, MAXDIM*sizeof(int));
 
-  data = (T *) malloc(t.items*sizeof(T));
-  if (data==NULL && t.items>0) {
-    printf("%d | %d %d %d %d | %d\n",dim,len[0],len[1],len[2],len[3],t.items);
-    ErrMsg("Allocation of the space for data unsuccessful",fun);
+  size = dim*sizeof(int);
+  len = (int *) malloc(size);
+  memcpy(len, t.len, size);
+
+  size = dim*sizeof(int);
+  estep = (int *) malloc(size);
+  memcpy(estep, t.estep, size);
+
+  size = items*sizeof(T);
+  data = (T *) malloc(size);
+  if (data==NULL && items>0) {
+    const char *fun="DArray<T,rank>::operator=(DArray)";
+    ErrMsg("Allocation of the space for data unsuccessful", fun);
   }
-  memcpy(data,t.data,t.items*sizeof(T));
+  memcpy(data, t.data, size);
 
-  return *this;
-}
-
-
-// operator of multiplication of the same array by a number (from left !)
-template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator*(T value)
-{
-  unsigned int i;
-
-  for (i=0; i<items; i++)
-    data[i] *= value;
   return *this;
 }
 
@@ -389,7 +476,7 @@ DArray<T,rank> &DArray<T,rank>::operator*(T value)
 // Operator of multiplication of two arrays (dimensionally compatible !)
 // This is supposed to be used for matrices only - not too general yet.
 template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator*(DArray<T,rank> &A2)
+DArray<T,rank> &DArray<T,rank>::operator*(const DArray<T,rank> &A2)
 {
   char *fun="DArray<T,rank>::operator*";
   static DArray<T,rank> A1 = *this;
@@ -457,19 +544,6 @@ DArray<T,rank> &DArray<T,rank>::operator*(DArray<T,rank> &A2)
 }
 
 
-// division of the whole array by a number
-template <class T, int rank>
-DArray<T,rank> &DArray<T,rank>::operator/(T value)
-{
-  char *fun="DArray<T,rank>::operator/";
-  unsigned int i;
-
-  for (i=0; i<items; i++)
-    data[i] /= value;
-  return *this;
-}
-
-
 /*------------------------------------------------------------------------------------------------
   class DArray - main functions
 ------------------------------------------------------------------------------------------------*/
@@ -479,13 +553,12 @@ template <class T, int rank>
 void DArray<T,rank>::EnlargeStep(int istep, ...)
 {
   va_list args;
-  int i;
 
   auto_enlarge = true;
   estep[0] = istep;
-  va_start(args,istep);
-  for (i=1; i<rank; i++)
-    estep[i] = va_arg(args,int);
+  va_start(args, istep);
+  for (int i=1; i<rank; i++)
+    estep[i] = va_arg(args, int);
   va_end(args);
 }
 
@@ -494,7 +567,7 @@ void DArray<T,rank>::EnlargeStep(int istep, ...)
 template <class T, int rank>
 void DArray<T,rank>::Fill(T value)
 {
-  memset(data, value, items*sizeof(T));
+  std::fill_n(data, items, value);
 }
 
 
@@ -518,75 +591,75 @@ T Max(DArray<T,rank> &arr)
 template <class T, int rank>
 void DArray<T,rank>::Resize(int inew, ...)
 {
-  char *fun="DArray<T,rank>::Resize";
+  const char *fun="DArray<T,rank>::Resize";
   va_list args;
   T *new_data;
-  unsigned int idx_target,idx_source;
-  int ilen,jlen,klen,llen,newlen[MAXDIM];
-  int i,k,l;
+  unsigned int idx_target, idx_source;
+  int ilen, jlen, klen, llen, newlen[dim];
+  int i, j, k;
 
   if (!auto_enlarge) {
-    ErrMsg("Cannot resize the fixed-size array (use EnlargeStep)",fun);
+    ErrMsg("Cannot resize a fixed-size array (use EnlargeStep)",fun);
     return;
   }
 
   // read the arguments
   newlen[0] = inew;
-  va_start(args,inew);
+  va_start(args, inew);
   for (i=1; i<rank; i++)
-    newlen[i] = va_arg(args,int);
+    newlen[i] = va_arg(args, int);
   va_end(args);
 
   // calculate of the new size of the array
   items = 1;
   ilen = jlen = klen = llen = 0;
-  switch (dim) {
-    case 4:
-      if (newlen[3]>len[3] && estep[3]>0) {
-        llen = len[3]+sup((newlen[3]-len[3])/double(estep[3]))*estep[3];
-        items *= llen;
-      } else {
-        items *= len[3];
-        llen = len[3];
-      }
 
-    case 3:
-      if (newlen[2]>len[2] && estep[2]>0) {
-        klen = len[2]+sup((newlen[2]-len[2])/double(estep[2]))*estep[2];
-        items *= klen;
-      } else {
-        items *= len[2];
-        klen = len[2];
-      }
-
-    case 2:
-      if (newlen[1]>len[1] && estep[1]>0) {
-        jlen = len[1]+sup((newlen[1]-len[1])/double(estep[1]))*estep[1];
-        items *= jlen;
-      } else {
-        items *= len[1];
-        jlen = len[1];
-      }
-
-    case 1:
-      if (newlen[0]>len[0] && estep[0]>0) {
-        ilen = len[0]+sup((newlen[0]-len[0])/double(estep[0]))*estep[0];
-        items *= ilen;
-      } else {
-        items *= len[0];
-        ilen = len[0];
-      }
+  if (newlen[0]>len[0] && estep[0]>0) {
+    ilen = len[0] + ceil((newlen[0]-len[0])/double(estep[0]))*estep[0];
+    items *= ilen;
+  } else {
+    items *= len[0];
+    ilen = len[0];
   }
 
-  // increase the structure
+  if (dim>1) {
+    if (newlen[1]>len[1] && estep[1]>0) {
+      jlen = len[1] + ceil((newlen[1]-len[1])/double(estep[1]))*estep[1];
+      items *= jlen;
+    } else {
+      items *= len[1];
+      jlen = len[1];
+    }
+  }
+
+  if (dim>2) {
+    if (newlen[2]>len[2] && estep[2]>0) {
+      klen = len[2]+ceil((newlen[2]-len[2])/double(estep[2]))*estep[2];
+      items *= klen;
+    } else {
+      items *= len[2];
+      klen = len[2];
+    }
+  }
+
+  if (dim>3) {
+    if (newlen[3]>len[3] && estep[3]>0) {
+      llen = len[3] + ceil((newlen[3]-len[3])/double(estep[3]))*estep[3];
+      items *= llen;
+    } else {
+      items *= len[3];
+      llen = len[3];
+    }
+  }
+
   new_data = (T *) malloc(items*sizeof(T));
-  if (new_data==NULL && items>0)
-    ErrMsg("Allocation of the space for data unsuccessful.",fun);
+  if (new_data==NULL && items>0) {
+    ErrMsg("Allocation of the space for data unsuccessful.", fun);
+    return;
+  }
 
-  // fill by 0
-  memset(new_data,0,items*sizeof(T));
+  std::fill_n(new_data, items, 0);
 
-  // store the data in the order of j,i,k,l (only i for vectors)
   switch (dim) {
     case 1:
       memcpy(new_data, data, len[0]*sizeof(T));
@@ -606,13 +679,13 @@ void DArray<T,rank>::Resize(int inew, ...)
 
     case 3:
       idx_source = idx_target = 0;
-      for (k=0; k<len[2]; k++) {
-        for (i=0; i<len[0]; i++) {
-	  memcpy(new_data+idx_target, data+idx_source, len[1]*sizeof(T));
-	  idx_target += jlen;
-	  idx_source += len[1];
+      for (i=0; i<len[0]; i++) {
+        for (j=0; j<len[1]; j++) {
+	  memcpy(new_data+idx_target, data+idx_source, len[2]*sizeof(T));
+	  idx_target += klen;
+	  idx_source += len[2];
 	}
-	idx_target += (ilen-len[0])*jlen;  // the empty space left by enlarging
+	idx_target += (jlen-len[1])*klen;  // the empty space left by enlarging
       }
       len[0] = ilen;
       len[1] = jlen;
@@ -621,16 +694,16 @@ void DArray<T,rank>::Resize(int inew, ...)
 
     case 4:
       idx_source = idx_target = 0;
-      for (l=0; l<len[3]; l++) {
-        for (k=0; k<len[2]; k++) {
-          for (i=0; i<len[0]; i++) {
-	    memcpy(new_data+idx_target, data+idx_source, len[1]*sizeof(T));
-	    idx_target += jlen;
-	    idx_source += len[1];
+      for (i=0; i<len[0]; i++) {
+        for (j=0; j<len[1]; j++) {
+          for (k=0; k<len[2]; k++) {
+	    memcpy(new_data+idx_target, data+idx_source, len[3]*sizeof(T));
+	    idx_target += llen;
+	    idx_source += len[3];
           }
-	  idx_target += (ilen-len[0])*jlen;  // the empty space left by enlarging
+	  idx_target += (klen-len[2])*llen;  // the empty space left by enlarging
         }
-	idx_target += (klen-len[2])*ilen*jlen;  // the empty space left by enlarging
+	idx_target += (jlen-len[1])*klen*llen;  // the empty space left by enlarging
       }
       len[0] = ilen;
       len[1] = jlen;
@@ -639,11 +712,25 @@ void DArray<T,rank>::Resize(int inew, ...)
       break;
   }
 
-  // copy the data from the temporary storage
-  Free();
+  free(data);
   data = (T *) malloc(items*sizeof(T));
+  if (data==NULL && items>0) {
+    ErrMsg("Allocation of the space for data unsuccessful.", fun);
+    return;
+  }
   memcpy(data, new_data, items*sizeof(T));
   free(new_data);
+}
+
+
+// swap two numbers
+template <class T>
+void swaparr(T &a, T &b)
+{
+  T dum;
+  dum = a;
+  a = b;
+  b = dum;
 }
 
 #endif

@@ -1,11 +1,13 @@
+#include <qdialog.h>
+
 #include "animate.h"
 
 
 Animate::Animate(QDialog *parent) : QDialog(parent)
 {
   setupUi(this);
-  connect(btSelAll, SIGNAL(clicked()), this, SLOT(selectAll()));
-  connect(btUnselAll, SIGNAL(clicked()), this, SLOT(unselectAll()));
+  connect(btSelAll, SIGNAL(released()), this, SLOT(selectAll()));
+  connect(btUnselAll, SIGNAL(released()), this, SLOT(unselectAll()));
 }
 
 

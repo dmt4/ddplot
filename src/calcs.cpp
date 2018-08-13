@@ -6,7 +6,7 @@
 
 
 // returns the atomic mass for a given element
-double AtomicMass( QString elem )
+double AtomicMass(QString elem)
 {
   if (elem=="MO")  return 95.94;
 }
@@ -16,7 +16,7 @@ double AtomicMass( QString elem )
 // If item is greater or equal than stacklen (exceeds the number of items in the stack),
 // the idx is calculated from the beginning of the stack. In other words, idx can
 // never exceed stacklen-1.
-int CalcIndex( int item, int stacklen )
+int CalcIndex(int item, int stacklen)
 {
   div_t dstruct;
   int idx;
@@ -31,7 +31,7 @@ int CalcIndex( int item, int stacklen )
 
 
 // Returns the file name with extension .dd.
-QString CreateFName( QString fname, QString ext )
+QString CreateFName(QString fname, QString ext)
 {
   QString fnew;
   int pos;
@@ -56,14 +56,14 @@ QString CreateFName( QString fname, QString ext )
 
 // Compares two numbers and returns true if they are the same 
 // within the specified tolerance
-bool isequal( double num1, double num2, double tol=1e-4 )
+bool isequal(double num1, double num2, double tol=1e-4)
 {
   return (num1<=num2+tol) && (num1>=num2-tol);
 }
 
 
 // Calculates the transformation matrix between two coordinate systems
-void mtransf( DMatrix csys1, DMatrix csys2, DMatrix &mat )
+void mtransf(DMatrix csys1, DMatrix csys2, DMatrix &mat)
 {
   DMatrix cs1(3,3), cs2(3,3);
   double size1, size2;

@@ -1,5 +1,6 @@
 #include <math.h>
 
+#include "messages.h"
 #include "neighlist.h"
 #include "pltwin.h"
 
@@ -17,7 +18,6 @@ void PltWin::calcEdgeRelDisp()
 {
   double dzInit, s;
   int d, icen, ineigh, idx, dum;
-
 
   if (VERBOSE)
     printf("* calculating the edge-displacements scaling\n");
@@ -116,6 +116,71 @@ void PltWin::calcScrewRelDisp()
 
 
 /*
+  Calculate the relative displacements between two neighboring atoms in the direction given by the
+  projection vector ProjVect. All projected displacements are expressed in the unit of the
+  projection of the the Burgers vector along the same direction, i.e.  scaleArr(:,:,3) are between
+  -1 and +1 and can be used directly to scale the atom-to-atom distance to obtain the vector of an
+  arrow. These displacements are plotted from atom to atom as the screw displacements.
+
+  Remember: This function must always be called prior to plotting the dislocation displacement
+  map.  
+*/
+
+bool PltWin::calcProjRelDisp()
+{
+  DVector eproj(3), r(3);
+  double rdisp, ratio, s, len, Bproj;
+  int i, ineigh, icen, idx, d;
+
+  if (VERBOSE)
+    printf("* calculating the displacements scaling in the given direction\n");
+
+  // project the Burgers vector in the direction ProjVector
+  len = sqrt( pow(ProjVector(1),2)+pow(ProjVector(2),2)+pow(ProjVector(3),2) );
+  eproj = ProjVector/len;
+  Bproj = 0;
+  for (d=1; d<=3; d++)
+    Bproj += Bvect(d)*eproj(d);
+
+  if (fabs(Bproj)<1e-6) {
+    msgError(err_ProjVectNotValid);
+    return false;
+  }
+
+  for (icen=1; icen<=NInit; icen++) {
+    idx = 1;
+
+    while (NeighListInit(icen,idx)!=END_OF_LIST) {
+      ineigh = NeighListInit(icen,idx);
+
+      for (d=1; d<=3; d++)
+	r(d) = aDisp(ineigh,d) - aDisp(icen,d);   // relative displacement of the two atoms
+
+      // project the relative displacements into the direction of the unit vector eproj (calculated above)
+      rdisp = 0;
+      for (d=1; d<=3; d++)
+	rdisp += r(d)*eproj(d);  
+      ratio = rdisp/Bproj;
+
+      while (fabs(ratio)>1.0)                    // treatment if ratio>1
+        ratio -= trunc(ratio);
+
+      if (fabs(ratio)>0.5) {                     // correction to have ratio between +/-0.5
+	s = ratio/fabs(ratio);
+	ratio = -s*(1.0 - fabs(ratio));
+      }
+
+      // save the scaling factors for all pairs of atoms - the same structure as NeighListInit
+      scaleArr(icen,idx,3) = 2.0*ratio;  // max. size of the arrow should be the full period
+
+      idx++;
+    }
+  }
+  return true;
+}
+
+
+/*
   Calculate the Nye tensor at every atom in the block and calculate the interpolations of the tensor 
   in the interstitial regions between the atoms. For details, see 
   [Hartley and Mishin, Mat. Sci. Eng. A400-401:18-21 (2005)].
@@ -129,7 +194,7 @@ void PltWin::calcNyeTensor()
 
   // calculate the neighbor list in the relaxed structure
   rmax = 0.5*(RdfDist(1)+RdfDist(2));  // consider "up to 1.5th" nearest neighbors
-  RelNeighborList(this, rmax, NeighListRel);
+  RelNeighborList(this, rmax, NeighListRel, numNeighRel);
 
   // MAKE BOTH NEIGHBOR LISTS BIDIRECTIONAL, i.e. i<-j and i->j
 
@@ -188,8 +253,9 @@ void PltWin::calcNyeTensor()
   The variable comp is either EDGE or SCREW depending on the component we want to compare.
 */
 
-bool PltWin::CompareDisp( PltWin *p1, PltWin *p2, int comp )
+bool PltWin::CompareDisp(PltWin *p2, int comp)
 {
+  PltWin *p1 = this;
   int idx, icen, ineigh1, ineigh2;
   bool ok;
 

@@ -1,6 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-  <file>ico/ddplot.png</file>
-  <file>ico/ddplot.icns</file>
+  <file>ddplot.png</file>
 </qresource>
 </RCC>

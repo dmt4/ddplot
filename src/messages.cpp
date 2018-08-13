@@ -28,5 +28,5 @@ int msgWarning( char *msg, char *button1, char *button2, char *button3, int par1
 
 void msgInfo( QString msg )
 {
-  QMessageBox::information( 0, "Information", msg.toAscii().data() );
+  QMessageBox::information( 0, "Information", msg.toLatin1().data() );
 }

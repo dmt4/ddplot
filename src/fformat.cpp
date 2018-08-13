@@ -24,6 +24,7 @@ int FFormat( QString fn )
 
   // BOP block file with inert and active atoms
   isBOP = (fname.indexOf(".bl") == fname.length()-3) || 
+    (fname.indexOf(".out") == fname.length()-4) || 
     (fname.indexOf(".block") == fname.length()-6) ||
     (fname.indexOf("block.init") >=0 ) || 
     (fname.indexOf("block.interm") >=0 ) || 
@@ -37,7 +38,7 @@ int FFormat( QString fn )
   // We must open the file to determine if it contains the grain boundary data file
   //
 
-  f = fopen(fn.toAscii().data(),"r+");
+  f = fopen(fn.toLatin1().data(),"r+");
 
   if (f==NULL)
     return FORMAT_UNKNOWN;

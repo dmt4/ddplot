@@ -1,24 +1,30 @@
-/*--------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
 
-                                  d d p l o t
+                                              DDPLOT
 
-  Program for visualization of relative displacements between atoms in
-  crystalline lattices using the dislocation displacement plots. When started,
-  the program reads the configuration file .ddplot in (1) the given directory if
-  the program is called as "ddplot -f <given directory>/.ddplot", (2) the
-  current directory, (1) the home directory $HOME
+  Program for visualization of relative displacements between atoms in crystalline lattices using
+  the dislocation displacement maps. When started, the program reads the configuration file .ddplot
+  from (1) the given directory if the program is called as "ddplot -f <given directory>/.ddplot",
+  (2) the current directory, (3) the home directory ($HOME in Linux/Mac).
 
-  Copyright (C)2002-2009 Roman Groger
-  under the GNU General Public License
+  Developed by Roman Gröger 
+  Distributed under the GNU General Public License
+    (2002-2007) University of Pennsylvania, Department of Materials Science and Engineering
+    (2007-2009) Los Alamos National Laboratory, Theoretical Division
+    (2009-now)  Academy of Sciences of the Czech Republic, Institute of Physics of Materials
 
---------------------------------------------------------------------------------*/
+--------------------------------------------------------------------------------------------------*/
 
-#include <pwd.h>
 #include <qapplication.h>
 #include <qcolor.h>
+#include <qdebug.h>
+#include <qstylefactory.h>
 
 #include "appwin.h"
 #include "cline.h"
+#include "colormap.h"
+#include "darray.h"
+#include "matinv.h"
 
 
 char *ATOMPOS_NAME[3] = {"UNRELAXED", "RELAXED", "COMPOSITE"};
@@ -26,6 +32,7 @@ int ATOM_DIAM[10] = {12, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int ATOM_THICKNESS[10] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 QColor ATOM_FGCOLOR[10];   // defined below
 QColor ATOM_BGCOLOR[10];   // defined below
+QColor BACKGROUND_COLOR = Qt::transparent;
 QString ATOM_NAME[MAX_LAYERS];
 int ARR_NEIGHNUM = 1;
 int ARR_NEIGHBORS[MAX_NEIGHBORS];
@@ -59,64 +66,75 @@ bool SHOW_CSYS = false;
 bool SHOW_NEIGHCELLS = false;
 bool CORR_EDGECOMP_BCC = false;
 double ZTOLERANCE = 0.0;
+bool ANTIALIASE = false;
+bool ATOM_3DSPHERE = false;
+
+QImage GRAY_SPHERE;
 
 QString SETTINGS_FILE;
-QString PLOT_FILE = "";
+QStringList PLOT_FILE;
+
+QVector<QRgb> cmap;
 
 #ifdef DEBUG
   FILE *fdbg;
 #endif
 
 
-/*
-  The main function of the ddplot code.
-*/
+/*  The main function of the ddplot code */
 
-int main( int argc, char ** argv ) 
+int main(int argc, char *argv[]) 
 {
   char *home_dir;
   char *fgcolors[1] = {"black"};
   char *bgcolors[8] = {"white", "yellow", "green", "cyan", "red", "blue", "gray", "black"};
   int i;
 
-  // debugging mode ?
 #ifdef DEBUG
   printf("Running ddplot in the DEBUG mode...\n");
   printf("The output will be saved in file ddplot.dbg\n");
-
   fdbg = fopen("ddplot.dbg","w+");
 #endif
 
-  // getting the home directory
   home_dir = getenv("HOME");
+#ifdef Q_WS_WIN
+  SETTINGS_FILE = home_dir + QString("\.ddplot");
+#else
   SETTINGS_FILE = home_dir + QString("/.ddplot");
+#endif
 
-  // interpretation of the command-line arguments
-  if (argc>1) {
-    if (!InterpretArgs(argc,argv))
-      return 0;
+  if (argc > 1 && !InterpretArgs(argc, argv)) {
+#ifdef DEBUG
+    fclose(fdbg);
+#endif
+    exit(EXIT_FAILURE);
   }
-
-  // default settings
-  for (i=0; i<NUM_FGCOLORS; i++)
-    ATOM_FGCOLOR[i] = QColor(fgcolors[i]);
-
-  for (i=0; i<NUM_BGCOLORS; i++)
-    ATOM_BGCOLOR[i] = QColor(bgcolors[i]);
-
+  
+  for (i=0; i<NUM_FGCOLORS; i++)  ATOM_FGCOLOR[i] = QColor(fgcolors[i]);
+  for (i=0; i<NUM_BGCOLORS; i++)  ATOM_BGCOLOR[i] = QColor(bgcolors[i]);
+  
   for (i=0; i<MAX_LAYERS; i++)
     ATOM_NAME[i] = "X";
 
   ARR_NEIGHBORS[0] = 1;
 
+  //  GRAY_SPHERE.load(":sphere.png");
   QApplication App(argc, argv);
   AppWin *MainWin = new AppWin();
-  MainWin->setWindowTitle( QString(PLATFORM) + QString("ddplot ") + QString(VERSION) );
+  if (PLOT_FILE.count() > 0) MainWin->loadFile(PLOT_FILE);
+
+  QString title = QString(PLATFORM) + QString("ddplot ") + QString(VERSION);
+  MainWin->setWindowTitle(title);
+  //#ifdef Q_WS_WIN
+  //  MainWin->setWindowIcon(QIcon(QString("ddplot.ico")));
+  //#endif
+  MainWin->setWindowIcon(QIcon("ddplot.png"));
   MainWin->show();
 
-  return App.exec();
+  App.exec();
 
 #ifdef DEBUG
   fclose(fdbg);
 #endif
+  exit(EXIT_SUCCESS);
 }

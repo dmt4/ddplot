@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DFindDPosPeierlsNabarro</class>
+ <widget class="QDialog" name="DFindDPosPeierlsNabarro">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>642</width>
+    <height>499</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dislocation position using the generalized Peierls-Nabarro model</string>
+  </property>
+  <widget class="QDialogButtonBox" name="buttonBox">
+   <property name="geometry">
+    <rect>
+     <x>460</x>
+     <y>450</y>
+     <width>161</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="layoutDirection">
+    <enum>Qt::LeftToRight</enum>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   </property>
+   <property name="centerButtons">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="applyHow">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>400</y>
+     <width>601</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <item>
+    <property name="text">
+     <string>Perform this operation on the current plot only</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>Perform this operation on all selected plots</string>
+    </property>
+   </item>
+  </widget>
+  <widget class="QLabel" name="hint">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>0</y>
+     <width>621</width>
+     <height>401</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::NoFrame</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Plain</enum>
+   </property>
+   <property name="text">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This calculation will identify the position of the dislocation from the relative displacements of atoms above and below the slip plane. If there are more possible slip planes, such as for 1/2&amp;lt;111&amp;gt; screw dislocations in bcc metals, this calculation is performed for each such plane. The result is a set of line segments that should ideally intersect at a single point representing the cross-section of the dislocation line with the plane of the figure (called hereafter the position of the dislocation). More generally, the pairwise intersections of these lines give rise to a small polygon whose centroid is considered to represent the position of the dislocation.&lt;/p&gt;&lt;p&gt;Details about this method can be found in the publication:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#0000ff;&quot;&gt;R. Gröger, V. Vitek: Determination of positions and curved transition pathways of screw dislocations in BCC crystals from atomic displacements. Mat. Sci. Eng. A 643 (2015) 203-210&lt;/span&gt;&lt;/p&gt;&lt;hr/&gt;&lt;p&gt;We are now going to pick pairs of points that define the chains of atoms above and below the slip plane. The relevant mouse events are:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;CLICK (LEFT BUTTON)&lt;/span&gt; ... picks an atom&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;CLICK (RIGHT BUTTON) &lt;/span&gt;... removes the previously picked atom&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;DOUBLE-CLICK (LEFT BUTTON)&lt;/span&gt; ... picks the last atom of the polygon and runs the calculation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="textFormat">
+    <enum>Qt::RichText</enum>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+   <property name="margin">
+    <number>5</number>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>DFindDPosPeierlsNabarro</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>DFindDPosPeierlsNabarro</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

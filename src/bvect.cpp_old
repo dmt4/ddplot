@@ -1,0 +1,55 @@
+#include "bvect.h"
+#include "darray.h"
+#include "misc.h"
+#include "pltwin.h"
+
+
+// Calculate the Burgers vector of the dislocation enclosed by the Burgers circuit that passes
+// throught the atoms in at.
+bool BVectFromCircuit(PltWin *pw, int iV, IVector at, DMatrix &du, DVector &B, double &Blen)
+{
+  DVector u1(3), u2(3), displ(3);
+  double lim;
+  int i, j, a1, a2;
+  bool ok;
+
+  B = 0.0;
+  du = 0.0;
+  for (i=1; i<iV; i++) {
+    a1 = at(i);
+    a2 = at(i+1);
+    for (j=1; j<=3; j++) {
+      if (fabs(pw->period(j))<1e-4) 
+	lim = 1e10;
+      else 
+	lim = pw->period(j);
+
+      u1(j) = pw->xyzRel(a1,j) - pw->xyzInit(a1,j);
+      if (u1(j) > lim/2.0) u1(j) = u1(j) - lim;
+      if (u1(j) < -lim/2.0) u1(j) = u1(j) + lim;
+
+      u2(j) = pw->xyzRel(a2,j) - pw->xyzInit(a2,j);
+      if (u2(j) > lim/2.0) u2(j) = u2(j) - lim;
+      if (u2(j) < -lim/2.0) u2(j) = u2(j) + lim;
+
+      du(i,j) = u2(j) - u1(j);
+
+      // Cannot decide if the dislocation is in the polygon (it essentially lies on the edge of the
+      // polygon). We need to exclude all these cases, otherwise it can happen that this function
+      // returns zero Burgers vector for a Burgers circuit which contains a dislocation and vice
+      // versa. This can be ascertained by choosing the constant value below, which should be as
+      // small as possible but still large enough so that we don't get distributions of dislocation
+      // positions if the Fisher-Yates shuffle of the order in which we cut the dislocation polygon
+      // is used. There does not seem to be any guideline to choose this value. By trial and error I
+      // found that 3e-3 is still good while 2e-3 gives the distribution of dislocation positions. 
+      //      if (fabs(fabs(du(i,j))-lim/2.0)<3e-3) return(false);   
+      if (fabs(fabs(du(i,j))-lim/2.0)<1e-4) return(false);   
+      if (du(i,j) > lim/2.0) du(i,j) = du(i,j) - lim;
+      if (du(i,j) < -lim/2.0) du(i,j) = du(i,j) + lim;
+
+      B(j) += du(i,j);
+    }
+  }
+  Blen = sqrt(pow(B(1),2) + pow(B(2),2) + pow(B(3),2));
+  return(true);
+}

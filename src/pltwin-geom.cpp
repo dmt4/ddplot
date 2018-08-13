@@ -1,7 +1,10 @@
 #include <math.h>
 #include <qpainter.h>
 #include <stdlib.h>
+#include <QGraphicsColorizeEffect>
 
+#include "colormap.h"
+#include "ddplot.h"
 #include "pltwin.h"
 
 
@@ -17,16 +20,14 @@ void PltWin::plotEdgeComponent(QPainter *p)
   QString txt;
   DVector rdisp(3);
   DVector xy_from(2), xy_to(2);
-  qreal ang;
-  QFontMetrics fm(p->fontMetrics());
+  float ang;
   QRect rect;
-  double xfrom, yfrom, xto, yto, x, y;
+  double xfrom, yfrom, xto, yto, xw, yw;
   double cen, lproj, pvsize, ndisp, cdisp, len;
-  int i, d, ineigh, icen, idx, xf, yf;
+  int i, d, ineigh, icen, idx;
   bool plotted;
 
-
-  p->setFont( QFont( "helvetica", 8 ) );
+  if (!paintEPS) p->setFont(QFont("helvetica", 11));
 
   for (icen=1; icen<=NInit; icen++) {
     // plot only those atoms which belong to the active layers
@@ -44,30 +45,10 @@ void PltWin::plotEdgeComponent(QPainter *p)
 	continue;
       }
 
-      switch(DispComponent) {
-        case EDGE:
-	  rdisp(1) = scaleArr(icen,idx,1)*DScaleFact;
-	  rdisp(2) = scaleArr(icen,idx,2)*DScaleFact;
-          break;
+      rdisp(1) = scaleArr(icen,idx,1)*DScaleFact;
+      rdisp(2) = scaleArr(icen,idx,2)*DScaleFact;
 
-        case MIXED:
-          for (d=1; d<=3; d++)
-            rdisp(d) = aDisp(ineigh,d) - aDisp(icen,d);
-
-	  // dot product of rdisp with ProjVector (normalized)
-	  lproj = 0;
-          pvsize = sqrt( pow(ProjVector(1),2)+pow(ProjVector(2),2)+pow(ProjVector(3),2) );
-          for (d=1; d<=3; d++)
-            lproj += rdisp(d)*ProjVector(d)/pvsize; 
- 
-          for (d=1; d<=3; d++)
-            rdisp(d) = lproj*ProjVector(d);
-
-	  rdisp(1) = rdisp(1)*DScaleFact;
-	  rdisp(2) = rdisp(2)*DScaleFact;
-      }
-
-      // calculation of the length of an arrow between icen and ineigh
+      // calculation of the length of the arrow between icen and ineigh
       for (d=1; d<=2; d++) {
 	if (AtomPos==UNRELAXED)
           cen = (xyzInit(icen,d)+xyzInit(ineigh,d))/2.0;         // center of the arrow
@@ -93,23 +74,12 @@ void PltWin::plotEdgeComponent(QPainter *p)
       // annotations
       if (PrintMagDisp && plotted) {
 	len = sqrt( pow(rdisp(1)/DScaleFact,2) + pow(rdisp(2)/DScaleFact,2) );
-        txt.sprintf("a/%0.2lf", 1.0/fabs(len));
-	rect = fm.boundingRect(txt);
-	rect.moveRight(rect.width()/2.0);
-	
-	x = (xfrom+xto)/2.0;
-	y = (yfrom+yto)/2.0;
-	xf = xBorder + xOffset + (int) floor(factor*(x-xyzMin(1)));
-	yf = height() - (yBorder + yOffset + (int) floor(factor*(y-xyzMin(2))));
+        txt.sprintf("a/%0.2lf", 1.0/fabs(len));	
+	xw = (xfrom+xto)/2.0;
+	yw = (yfrom+yto)/2.0;
 	ang = atan2(yto-yfrom, xto-xfrom);
-
 	if (fabs(ang)>M_PI/2.0) ang += M_PI;
-
-	p->save();
-	p->translate(xf, yf);
-	p->rotate(-ang*180.0/M_PI);
-        p->drawText(rect, Qt::AlignJustify, txt);
-	p->restore();
+	DrawText(p, xw, yw, txt, Qt::AlignHCenter, ang);       
       }
 
       idx++;
@@ -133,21 +103,20 @@ void PltWin::plotScrewComponent(QPainter *p)
   QString txt;
   DVector rdisp(3), xyz0(3), xyz1(3), rvect(3);
   DVector xyz_from(3), xyz_to(3), rscreen(3);
-  qreal ang;
-  QFontMetrics fm(p->fontMetrics());
+  float ang;
   QRect rect;
   QPoint offs;
-  double xfrom, yfrom, xto, yto, cen, x, y;
-  int i, d, ineigh, icen, idx, xf, yf;
+  double xfrom, yfrom, xto, yto, cen, xw, yw;
+  int i, d, ineigh, icen, idx;
   bool plotted;
 
-  p->setFont( QFont( "helvetica", 8 ) );
+  if (!paintEPS) p->setFont(QFont("helvetica", 11));
 
   for (icen=1; icen<=NInit; icen++) {
     // plot only those atoms which belong to the active layers
     if (!zLayerSel(zLayer(icen)))
       continue;
-
+    
     idx = 1;    
 
     while (NeighListInit(icen,idx)!=END_OF_LIST) {
@@ -167,8 +136,8 @@ void PltWin::plotScrewComponent(QPainter *p)
         }
       } else {
         for (d=1; d<=3; d++) {
-          xyz0(d) = xyzRel(icen,d) + AtomDispScale*aDisp(icen,d);
-          xyz1(d) = xyzRel(ineigh,d) + AtomDispScale*aDisp(ineigh,d); 
+          xyz0(d) = xyzRel(icen,d);
+          xyz1(d) = xyzRel(ineigh,d);
         }
       }
 
@@ -198,30 +167,19 @@ void PltWin::plotScrewComponent(QPainter *p)
 
       // annotations
       if (PrintMagDisp && plotted) {
-        txt.sprintf("a/%0.2lf", 4.0/(fabs(scaleArr(icen,idx,3))));
-	rect = fm.boundingRect(txt);
-	rect.moveRight(rect.width()/2.0);
-	
-	x = (xfrom+xto)/2.0;
-	y = (yfrom+yto)/2.0;
-	xf = xBorder + xOffset + (int) floor(factor*(x-xyzMin(1)));
-	yf = height() - (yBorder + yOffset + (int) floor(factor*(y-xyzMin(2))));
+        txt.sprintf("a/%0.2lf", 4.0/(fabs(scaleArr(icen,idx,3))));	
+	xw = (xfrom+xto)/2.0;
+	yw = (yfrom+yto)/2.0;
 	ang = atan2(yto-yfrom, xto-xfrom);
-
 	if (fabs(ang)>M_PI/2.0) ang += M_PI;
-
-	p->save();
-	p->translate(xf, yf);
-	p->rotate(-ang*180.0/M_PI);
-        p->drawText(rect, Qt::AlignJustify, txt);
-	p->restore();
+	DrawText(p, xw, yw, txt, Qt::AlignHCenter, ang);
       }
  
       idx++;
     }
   }
 }
-
+      
 
 /*
   Plotting the DIFFERENCE between the displacements in two plots. Prior to calling this function,
@@ -231,7 +189,7 @@ void PltWin::plotScrewComponent(QPainter *p)
   instead the difference between these displacements in two different plots.
 */
 
-void PltWin::plotDifference( QPainter *p )
+void PltWin::plotDifference(QPainter *p)
 {
   QString txt;
   DVector xycen(2), xy_from(2), xy_to(2);
@@ -239,8 +197,7 @@ void PltWin::plotDifference( QPainter *p )
   int icen, ineigh, idx, i, d, symsize;
   bool exist;
 
-
-  p->setFont( QFont( "helvetica", 8 ) );
+  if (!paintEPS) p->setFont(QFont("helvetica", 11));
 
   for (icen=1; icen<=NInit; icen++) {
     // plot only those atoms which belong to the active layers
@@ -259,24 +216,24 @@ void PltWin::plotDifference( QPainter *p )
       }
 
       // we are plotting in the (xy) plane - don't take the z-coordinate for scaling
-      rdist = sqrt( pow(xyzInit(icen,1)-xyzInit(ineigh,1),2) +
-		    pow(xyzInit(icen,2)-xyzInit(ineigh,2),2) );
+      rdist = sqrt(pow(xyzInit(icen,1)-xyzInit(ineigh,1),2) +
+		   pow(xyzInit(icen,2)-xyzInit(ineigh,2),2));
 
       // for comparison of screw components
       switch(DispComponent) {
         case DIFF_SCREW:
-	  symsize = trunc( scaleArr(icen,idx,3)*rdist * factor*DScaleFact*ZFact );  
+	  symsize = trunc(scaleArr(icen,idx,3)*rdist * factor*DScaleFact*ZFact);
 	  if (symsize==0) 
 	    break;
 
-	  p->setFont( QFont("helvetica", abs(symsize)) );
+	  if (!paintEPS) p->setFont( QFont("helvetica", abs(symsize)) );
 	    
 	  if (symsize>0) {
 	    txt = "+";
-	    p->setPen( QPen(Qt::red) );
+	    p->setPen(QPen(Qt::red));
 	  } else {
 	    txt = '-';
-	    p->setPen( QPen(Qt::blue) );
+	    p->setPen(QPen(Qt::blue));
 	  }
 	  
 	  // center the sign
@@ -284,8 +241,8 @@ void PltWin::plotDifference( QPainter *p )
 	    xycen(d) = (xyzInit(icen,d) + xyzInit(ineigh,d))/2.0 - abs(symsize)/(3*ZFact*factor);
 	    
 	  // plotting either the plus or minus sign according to the magnitude in diff
-	  DrawText( p, ZFact*xycen(1)-xPan-(ZFact-1)*xyzCen(1), 
-		    ZFact*xycen(2)-yPan-(ZFact-1)*xyzCen(2), txt );
+	  DrawText(p, ZFact*xycen(1)-xPan-(ZFact-1)*xyzCen(1), 
+		   ZFact*xycen(2)-yPan-(ZFact-1)*xyzCen(2), txt);
 	  break;
 
         case DIFF_EDGE:
@@ -325,23 +282,23 @@ void PltWin::plotNyeTensor( QPainter *p )
 //---------------------------------------------------------------------------------------------------------
 
 
-bool PltWin::DrawArrow( QPainter *p, double x0, double y0, double x1, double y1 )
+bool PltWin::DrawArrow(QPainter *p, double xw0, double yw0, double xw1, double yw1)
 {
   QPolygon pts;
   const double h = 0.2*tan(arrAngle*M_PI/360.0);  
   double arrow[4][2] = { {0.0, 0.0}, {1.0, 0.0}, {0.8, h}, {0.8, -h} };
   //  const double h = 0.3*tan(arrAngle*M_PI/360.0);  // bigger arrowhead
   //  double arrow[4][2] = { {0.0, 0.0}, {1.0, 0.0}, {0.7, h}, {0.7, -h} };
-  DMatrix xy(4,2);
+  IMatrix xy(4,2);
   int i;
   double ang, xrot, yrot, size;
 
-  size = sqrt(pow(x1-x0,2)+pow(y1-y0,2));
+  size = sqrt(pow(xw1-xw0,2)+pow(yw1-yw0,2));
   if (factor*size<shortestArrow) 
     return false;
 
   // scaling and rotation
-  ang = atan2(y1-y0,x1-x0);
+  ang = atan2(yw1-yw0,xw1-xw0);
   for (i=0; i<4; i++) {
     // scaling
     arrow[i][0] *= size;
@@ -355,14 +312,13 @@ bool PltWin::DrawArrow( QPainter *p, double x0, double y0, double x1, double y1 
   }
 
   for (i=1; i<=4; i++) {
-    xy(i,1) = xBorder + xOffset + factor*(x0+arrow[i-1][0]-xyzMin(1));
-    xy(i,2) = height() - (yBorder + yOffset + factor*(y0+arrow[i-1][1]-xyzMin(2)));
+    xyWorldToScreen(xw0+arrow[i-1][0], yw0+arrow[i-1][1], xy(i,1), xy(i,2));
   }
-
+  
   if (paintEPS) {
-    fprintf(feps, "%0.2lf %0.2lf moveto %0.2lf %0.2lf lineto stroke\n", 
+    fprintf(feps, "newpath 0 0 0 setrgbcolor %d %d moveto %d %d lineto stroke\n", 
   	    xy(1,1), height()-xy(1,2), xy(2,1), height()-xy(2,2));
-    fprintf(feps, "%0.2lf %0.2lf newpath moveto %0.2lf %0.2lf lineto  %0.2lf %0.2lf lineto closepath fill stroke\n", 
+    fprintf(feps, "newpath 0 0 0 setrgbcolor %d %d moveto %d %d lineto %d %d lineto closepath fill stroke\n", 
 	    xy(2,1), height()-xy(2,2), xy(3,1), height()-xy(3,2), xy(4,1), height()-xy(4,2));
   } else {
     QLineF line(xy(1,1), xy(1,2), xy(2,1), xy(2,2));
@@ -378,105 +334,143 @@ bool PltWin::DrawArrow( QPainter *p, double x0, double y0, double x1, double y1 
 }
 
 
-void PltWin::DrawCircle( QPainter *p, int atom, double x, double y, int dia)
+void PltWin::DrawAtom(QPainter *p, int atom, double xw, double yw, int dia)
 {
-  QColor col;
-  int xpos, ypos, lw;
+  QColor cfill, cline;
+  QPen pen;
+  QBrush brush;
+  int xs, ys, lw, c;
   int rad = int(dia/2.0);
 
-  // (0,0) is at the bottom left corner of the screen
-  xpos = xBorder + xOffset + (int) floor(factor*(x-xyzMin(1))) - rad; 
-  ypos = height() - (yBorder + yOffset + (int) floor(factor*(y-xyzMin(2)))) - rad;
+  xyWorldToScreen(xw, yw, xs, ys);
+  xs -= rad;
+  ys -= rad;
 
   if (paintEPS) {
-    if (atom>0) 
-      col = zColorLayer(zLayer(atom),2);
-    else
-      col = Qt::white;
-    fprintf(feps, "%0.1f %0.1f %0.1f setrgbcolor %d %d %d 0 360 arc closepath fill\n", 
-	    col.red()/255.0, col.green()/255.0, col.blue()/255.0, xpos+rad, height()-ypos-rad, rad);
-    if (atom>0) {
-      col = zColorLayer(zLayer(atom),1);
+    (atom > 0) ? cfill = zColorLayer(zLayer(atom), 2) : cfill = Qt::lightGray;
+    fprintf(feps, "newpath %0.1f %0.1f %0.1f setrgbcolor %d %d %d 0 360 arc closepath fill\n", 
+    	    cfill.red()/255.0, cfill.green()/255.0, cfill.blue()/255.0, xs+rad, height()-ys-rad, rad);
+    if (atom > 0) {
+      cline = zColorLayer(zLayer(atom),1);
       lw = zLineThickLayer(zLayer(atom));
     } else {
-      col = Qt::black;
+      cline = Qt::black;
       lw = 1;
     }
-    fprintf(feps, "%0.1f %0.1f %0.1f setrgbcolor %d setlinewidth %d %d %d 0 360 arc closepath stroke\n", 
-	    col.red()/255.0, col.green()/255.0, col.blue()/255.0, lw, xpos+rad, height()-ypos-rad, rad);
-  } else
-    p->drawEllipse( xpos, ypos, dia, dia );    
+    fprintf(feps, "newpath %0.1f %0.1f %0.1f setrgbcolor %d setlinewidth %d %d %d 0 360 arc closepath stroke\n", 
+	    cline.red()/255.0, cline.green()/255.0, cline.blue()/255.0, lw, xs+rad, height()-ys-rad, rad);
+  } else {
+    if (ATOM_3DSPHERE) {
+      QColor col;
+      (atom > 0) ? col = p->brush().color() : col = Qt::lightGray;
+      QRect rect(xs, ys, dia, dia);
+      QRadialGradient radgrad(xs+dia/2, ys+dia/2, dia/2, xs+2*dia/3, ys+dia/3);
+      radgrad.setColorAt(0, col.lighter(200));
+      radgrad.setColorAt(0.6, col);
+      radgrad.setColorAt(1, col.darker(200));
+      pen = p->pen();
+      brush = p->brush();
+      p->setPen(Qt::NoPen);
+      p->setBrush(radgrad);
+      p->drawEllipse(rect);
+      p->setPen(pen);
+      p->setBrush(brush);
+
+      // draw atoms using saved colored spheres
+      /*      if (plotType == PLOT_ATOM_LAYERS) {
+	(atom > 0) ? c = zLayer(atom)%NUM_BGCOLORS : c = 0;
+      } else if (plotType == PLOT_ATOM_TYPES) {
+	c = atomType(atom);
+      }
+      p->drawImage(QRect(xs, ys, dia, dia), sphere[c]);*/
+    } else {
+      p->drawEllipse(xs, ys, dia, dia);
+    }
+  }
 
   // if the real atomic number is given, keep its coordinates on the screen
-  if (atom>0) {
-    atomScreen(atom,1) = xpos + rad;
-    atomScreen(atom,2) = ypos + rad;
+  if (atom > 0) {
+    atomScreen(atom,1) = xs + rad;
+    atomScreen(atom,2) = ys + rad;
   }
 }
 
 
-void PltWin::DrawLine( QPainter *p, double x0, double y0, double x1, double y1, int addx, int addy)
+void PltWin::DrawLine(QPainter *p, double xw0, double yw0, double xw1, double yw1)
 {
-  int xfrom, xto, yfrom, yto;
+  int xs0, ys0, xs1, ys1;
 
-  xfrom = xBorder + xOffset + (int) floor(factor*(x0-xyzMin(1))) + addx;
-  xto   = xBorder + xOffset + (int) floor(factor*(x1-xyzMin(1))) + addx;
-  yfrom = height() - (yBorder + yOffset + (int) floor(factor*(y0-xyzMin(2))) + addy);
-  yto   = height() - (yBorder + yOffset + (int) floor(factor*(y1-xyzMin(2))) + addy);
-
+  xyWorldToScreen(xw0, yw0, xs0, ys0);
+  xyWorldToScreen(xw1, yw1, xs1, ys1);
   if (paintEPS)
-    fprintf(feps, "%d %d moveto %d %d lineto stroke\n", xfrom, height()-yfrom, xto, height()-yto);
+    fprintf(feps, "%d %d moveto %d %d lineto stroke\n", xs0, height()-ys0, xs1, height()-ys1);
   else
-    p->drawLine( xfrom, yfrom, xto, yto );
+    p->drawLine(xs0, ys0, xs1, ys1);
 }
 
 
-void PltWin::DrawPlaneTraces( QPainter *p, double x0, double y0, double x1, double y1 )
+void PltWin::DrawPlaneTraces(QPainter *p, double xw0, double yw0, double xw1, double yw1)
 {
   int ang, circDia;
-  int x0int, y0int, x1int, y1int;
-  double xEnd, yEnd, xC, yC, rang;
+  int xs0, ys0, xs1, ys1;
+  double xwEnd, ywEnd, rang;
 
   QPen *apen = new QPen();
-  apen->setColor( Qt::darkGray );
+  apen->setColor(Qt::darkGray);
   p->setPen(*apen);
 
-  x0int = xBorder + xOffset + (int) floor(factor*(x0-xyzMin(1))); 
-  y0int = height() - (yBorder + yOffset + (int) floor(factor*(y0-xyzMin(2))));  
-  x1int = xBorder + xOffset + (int) floor(factor*(x1-xyzMin(1))); 
-  y1int = height() - (yBorder + yOffset + (int) floor(factor*(y1-xyzMin(2))));
-
   circDia = 10;
-  p->setClipRect(x0int-2*circDia, y1int-2*circDia,
-		 x1int-x0int+4*circDia, y0int-y1int+4*circDia);
-
-  xC = ZFact*xCore - xPan - (ZFact-1)*xyzCen(1);
-  yC = ZFact*yCore - yPan - (ZFact-1)*xyzCen(2);
+  xyWorldToScreen(xw0, yw0, xs0, ys0);
+  xyWorldToScreen(xw1, yw1, xs1, ys1);
+  p->setClipRect(xs0-2*circDia, ys1-2*circDia, xs1-xs0+4*circDia, ys0-ys1+4*circDia);
 
   for (ang=0; ang<360; ang+=PTAngle) {
     rang = ang*M_PI/180.0;
-    xEnd = xCore + 100.0*cos(rang);
-    yEnd = yCore + 100.0*sin(rang);
-
-    DrawLine(p, xC, yC, xEnd, yEnd, 0, 0);
+    xw1 = xCore+100.0*cos(rang);
+    yw1 = yCore+100.0*sin(rang);
+    DrawLine(p, xCore, yCore, xw1, yw1);
   }
-
   p->setClipping(false);
 }
 
 
-void PltWin::DrawText( QPainter *p, double x, double y, QString txt )
+void PltWin::DrawText(QPainter *p, double xw, double yw, QString txt, Qt::AlignmentFlag align, float ang)
 {
-  int xf, yf;
-
-  xf = xBorder + xOffset + (int) floor(factor*(x-xyzMin(1)));
-  yf = height() - (yBorder + yOffset + (int) floor(factor*(y-xyzMin(2))));
-
-  p->drawText( xf, yf, txt );
+  int xs, ys;
+  
+  xyWorldToScreen(xw, yw, xs, ys);
+  if (paintEPS) {
+    if (ang == 0) {
+      if (align == Qt::AlignLeft) 
+	fprintf(feps, "newpath %d %d moveto (%s) show\n",
+		xs, height()-ys, txt.toLatin1().data());
+      else if (align == Qt::AlignHCenter)
+	fprintf(feps, "newpath %d %d moveto (%s) dup stringwidth pop 2 div neg 0 rmoveto show\n",
+		xs, height()-ys, txt.toLatin1().data());	       
+    } else {
+      if (align == Qt::AlignLeft)
+	fprintf(feps, "gsave newpath %d %d moveto (%s) %0.1f rotate show grestore\n",
+		xs, height()-ys, txt.toLatin1().data(), ang*180.0/M_PI);
+      else if (align == Qt::AlignHCenter)
+	fprintf(feps, "gsave newpath %d %d moveto (%s) %0.1f rotate dup stringwidth pop 2 div neg 0 rmoveto show grestore\n",
+		xs, height()-ys, txt.toLatin1().data(), ang*180.0/M_PI);
+    }
+  } else {
+    if (align == Qt::AlignLeft)
+      p->drawText(xs, ys, txt);
+    else {
+      p->save();
+      p->translate(xs, ys);
+      p->rotate(-ang*180.0/M_PI);
+      QRect rect(-50, 0, 100, 20);
+      p->drawText(rect, align, txt);
+      p->restore();
+    }
+  }
 }
 
 
-void PltWin::Pan( double xsteps, double ysteps )
+void PltWin::Pan(double xsteps, double ysteps)
 {
   xPan += PAN_RATIO*xsteps*blSize(1);   
   yPan += PAN_RATIO*ysteps*blSize(2);   
@@ -530,6 +524,57 @@ void PltWin::ShowActiveZLayers( QPainter *p )
 }
 
 
+void PltWin::ShowColorMap( QPainter *p )
+{
+  QString txt;
+  float wbin, div;
+  int x0, y0, xwidth, yheight, y, dy, dymin=20;
+  int i, nbin, i1, i2;
+  bool bin;
+
+  p->setFont(QFont("helvetica", 13));
+    
+  xwidth = 40;
+  yheight = 350;
+  x0 = width() - 120;
+  y0 = height()/2 - yheight/2;
+
+  dy = yheight/cmap.count();
+  y = y0;
+
+  // need binning
+  bin = (dy < dymin);
+  if (bin) {
+    nbin = round(yheight/dymin);
+    dy = yheight/nbin;
+    div = cmap.count()/nbin;
+    colormap(nbin, cmap);
+  }
+  
+  for (i=cmap.count()-1; i>=0; i--) {
+    p->setPen( Qt::NoPen );
+    p->setBrush( QColor(cmap[i]) );
+    p->drawRect( x0, y, xwidth, dy );
+    p->setPen( Qt::black );
+    if (!bin)
+      txt.sprintf("%d", i);
+    else {
+      i1 = round(i*div);
+      i2 = round((i+1)*div);
+      txt.sprintf("%d..%d", i1, i2);
+    }
+    p->drawText( x0+xwidth+5, y+dy/2+5, txt );
+    y += dy;
+  }
+
+  if (plotType == PLOT_ATOM_NEIGHBORS)
+    p->drawText( x0-50, y0-20, "Number of neighbors" );
+
+  if (plotType == PLOT_ATOM_TYPES)
+    p->drawText( x0-30, y0-20, "Atomic types" );
+}
+
+
 void PltWin::ShowCSys( QPainter *p )
 {
   QString txt;
@@ -574,7 +619,7 @@ void PltWin::ShowCSys( QPainter *p )
 
 void PltWin::Zoom( double zfact )
 {
-  if (ZFact*zfact<=20 && ZFact*zfact>=0.1) {
+  if (ZFact*zfact<=500 && ZFact*zfact>=0.1) {
     ZFact *= zfact;
     repaint();
   }

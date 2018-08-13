@@ -1,0 +1,235 @@
+#include <qbrush.h>
+#include <qdialog.h>
+#include <qpen.h>
+#include <qstring.h>
+#include <qtablewidget.h>
+
+#include "ui_ddpospeierlsnabarroresults.h"
+
+#include "dpospnresults.h"
+#include "lagrpoly.h"
+#include "getatomchain.h"
+#include "messages.h"
+#include "pltwin.h"
+
+/*
+  The procedure findDPosPeierlsNabarro (see below) is used to identify the dislocation position in a
+  chain of atoms and their corresponding relative displacements in the direction of the Burgers
+  vector. If this is done for the two chains of atoms above and below the slip plane, we obtain two
+  positions of the dislocation - one in the chain above and the other in the chain below. These two
+  points define a line segment. If this procedure is repeated for at least two different
+  orientations of the possible slip plane (for screw dislocations in bcc crystals, these are {110}
+  planes), we can identify the dislocation position as the intersection of these two lines. This
+  calculation is done in this procedure. If more than two line segments are available (i.e. more
+  than two slip planes exist), this procedure calculates the intersection between each pair of line
+  segments. The position of the dislocation is then identified as a barycenter (or center of mass)
+  of the individual estimates of the dislocation position. */
+
+void CalcDPosPeierlsNabarro(PltWin *pw)
+{
+  QString txt;
+  FILE *f;
+  DVector xd, yd;
+  double x1, y1, x2, y2, x, yi, yj, xdavg, ydavg;
+  int ichain, i, a, imax, nln, j, k, n;
+  bool ok;
+
+  // get the parameters a, b of the equations of line y=a*x+b
+  imax = trunc(pw->nchain/2.0);
+  DVector aln(imax), bln(imax);
+  nln = 0;
+  for (i=1; i<=pw->nchain; i+=2) {
+    x1 = pw->dposchain(i,1);
+    y1 = pw->dposchain(i,2);
+    x2 = pw->dposchain(i+1,1);
+    y2 = pw->dposchain(i+1,2);
+    nln++;
+    aln(nln) = (y2-y1)/(x2-x1);
+    bln(nln) = y1-aln(nln)*x1;
+  }
+
+  n = nln*(nln-1)/2;
+  xd.Allocate(n);
+  yd.Allocate(n);
+
+  // get the intersection points of each pair of lines
+  xdavg = ydavg = 0.0;
+  k = 0;
+  for (i=1; i<=nln; i++) {
+    for (j=i+1; j<=nln; j++) {
+      if (aln(i)==aln(j)) {
+	msgError(err_DPosParallelLines);
+	return;
+      }
+      x = -(bln(i)-bln(j))/(aln(i)-aln(j));
+      yi = aln(i)*x+bln(i);
+      yj = aln(j)*x+bln(j);
+      if (fabs(yi-yj) > 1e-4) {
+	msgError(err_DPosNoIntersection);
+	return;
+      }
+      k = k + 1;
+      xd(k) = x;
+      yd(k) = yi;   // yi=yj (see above)
+      xdavg += x;
+      ydavg += yi;  // yi=yj (see above)
+    }
+  }
+
+  // average the positions of the dislocations stored in (xx,yy) to get the estimate for the
+  // dislocation position
+  xdavg /= double(k);
+  ydavg /= double(k);
+  printf("Average dislocation position:  x=%0.4f, y=%0.4f\n", xdavg, ydavg);
+
+  // save a polygon with vertices corresponding to the positions of the dislocation
+  f = fopen("xd_yd.dat", "a+");
+  for (i=1; i<=k; i++) {
+    fprintf(f, "%0.4f %0.4f\n", xd(i), yd(i));
+  }
+  fprintf(f, "%0.4f %0.4f\n\n", xd(1), yd(1));
+  fprintf(f, "%0.4f %0.4f\n\n", xdavg, ydavg);
+  fclose(f);
+
+  xd.Free();
+  yd.Free();
+  
+  Ui::DDPosPeierlsNabarroResults ui;
+  DPosPNResults *dialog = new DPosPNResults;
+  ui.setupUi(dialog);
+
+  for (ichain=1; ichain<=1; ichain++) {
+    if (ichain > dialog->tabWidget->count()) {
+      QWidget *tab = new QWidget();
+      txt = "tab2";
+      dialog->tabWidget->addTab(tab, txt);
+      //      *tab = *dialog->tabWidget->widget(ichain-1);
+    }
+    //    dialog->tabWidget->widget(ichain-1)->coor->setRowCount(pw->nachain(ichain));
+    for (i=1; i<=pw->nachain(ichain); i++) {
+      a = pw->achain(ichain,i);
+      txt.sprintf("%0.4lf", pw->xyzInit(a,1));
+      QTableWidgetItem *witem1 = new QTableWidgetItem(txt);
+      dialog->coor->setItem(i-1, 0, witem1);
+      txt.sprintf("%0.4lf", pw->ubchain(ichain,i));
+      QTableWidgetItem *witem2 = new QTableWidgetItem(txt);
+      dialog->coor->setItem(i-1, 1, witem2);
+    }
+  }
+
+  dialog->exec();
+  ok = dialog->result()==QDialog::Accepted;
+}
+
+
+/*
+  For a given pair of atoms, find all atoms that lie along the line represented by these atoms (in
+  the unrelaxed configuration). Calculate the displacements of these atoms in the direction of the
+  Burgers vector and FIND THE POSITION ALONG THIS CHAIN AT WHICH THE DISPLACEMENT IS EQUAL TO THE
+  MEAN, i.e. the position of the inflection point. This is the estimated position of the dislocation
+  in this chain (returned as dpos). The other coordinate of the dislocation position cannot be
+  determined at this point but is calculated in the procedure CalcDPosPeierlsNabarro above */
+
+bool findDPosPeierlsNabarro(PltWin *pw, DVector &dpos, int &nachain, IVector &achain, DVector &ubchain,
+			    double &ubmin, double &ubmax)
+{
+  DMatrix mpos;
+  DVector v(2), w(2), unitb(3), pos;
+  IVector idx, adum;
+  FILE *f;
+  double b, bhalf, addb, ub0, ub1, ubmid, ub, dub1, dub2, d, mag, fdum, p, ublo, ubhi, ubtry, dub;
+  int a1, a2, i, a, i1, i2, ii, j;
+  bool ok;
+
+  b = sqrt(pow(pw->Bvect(1),2) + pow(pw->Bvect(2),2) + pow(pw->Bvect(3),2));
+  bhalf = b/2.0;
+  unitb = pw->Bvect/b;
+
+  // find the atoms along the line defined by the atoms picked
+  a1 = pw->apicked(1);
+  a2 = pw->apicked(2);
+  getatomchain(pw, a1, a2, nachain, achain);
+  mpos.Allocate(nachain,1); 
+  pos.Allocate(nachain); 
+  idx.Allocate(nachain);
+  adum.Allocate(nachain);
+  v(1) = pw->xyzInit(a2,1) - pw->xyzInit(a1,1);
+  v(2) = pw->xyzInit(a2,2) - pw->xyzInit(a1,2);
+  mag = sqrt(pow(v(1),2)+pow(v(2),2));
+  v /= mag;
+  for (i=1; i<=nachain; i++) {
+    a = achain(i);
+    w(1) = pw->xyzInit(a,1) - pw->xyzInit(a1,1);
+    w(2) = pw->xyzInit(a,2) - pw->xyzInit(a1,2);
+    mpos(i,1) = w(1)*v(1) + w(2)*v(2);  // position of the atom along the chain
+  }
+  sort(mpos, 1, nachain, 1, idx);
+  for (i=1; i<=nachain; i++) {
+    ii = idx(i);
+    adum(i) = achain(ii);
+    pos(i) = mpos(ii,1);
+  }
+  achain = adum;
+  mpos.Free();
+  idx.Free();
+  adum.Free();
+
+  // get the relative displacements of atoms in the chain in the direction of the Burgers vector
+  for (i=1; i<=nachain; i++) {
+    a = achain(i);
+    ub = (pw->xyzRel(a,1)-pw->xyzInit(a,1))*unitb(1) +
+      (pw->xyzRel(a,2)-pw->xyzInit(a,2))*unitb(2) + 
+      (pw->xyzRel(a,3)-pw->xyzInit(a,3))*unitb(3);
+    if (i == 1) ub0 = ub;
+    ub -= ub0;
+    if (ub > bhalf) ub -= b;
+    if (ub <= -bhalf) ub += b;
+    if (i > 1) {
+      dub = ub - ubchain(i-1);
+      if (fabs(dub) > bhalf) ub -= b*ub/fabs(ub);
+    }
+    ubchain(i) = ub;  // this is in (-b/2; b/2>
+  }
+
+  // get the minimum and maximum ub displacement along the chain
+  ubmin = INF;
+  ubmax = -INF;
+  for (i=1; i<=nachain; i++) {
+    ub = ubchain(i);
+    if (ub < ubmin) ubmin = ub;
+    if (ub > ubmax) ubmax = ub;
+  }
+  //  ubmin = ubchain(1);
+  //  ubmax = ubchain(nachain);
+
+  // save the profile ub(pos) for debugging
+  f = fopen("ub_pos.dat", "a+");
+  for (i=1; i<=nachain; i++) {
+    fprintf(f, "%0.4f %0.4f\n", pos(i), ubchain(i));
+  }
+  fprintf(f, "\n");
+  fclose(f);
+
+  // For the chain of atoms, find the two atoms whose displacements are closest to 1/2 of the minimum
+  // plus the maximum displacement of atoms in this chain. The position of the dislocation
+  // is then obtained by linear interpolation.
+  ubmid = (ubmin + ubmax)/2.0;
+  ok = false;
+  dpos = INF;
+  for (i=1; i<nachain; i++) {
+    dub1 = ubchain(i) - ubmid;
+    dub2 = ubchain(i+1) - ubmid;
+    if (dub1*dub2 < 0) {
+      d = (ubmid-ubchain(i))/(ubchain(i+1)-ubchain(i));  // fractional coordinate <0,1>
+      printf("d=%0.4f\n",pos(i)+d*(pos(i+1)-pos(i)));
+      a1 = achain(i);
+      a2 = achain(i+1);
+      dpos(1) = pw->xyzInit(a1,1) + d*(pw->xyzInit(a2,1)-pw->xyzInit(a1,1));
+      dpos(2) = pw->xyzInit(a1,2) + d*(pw->xyzInit(a2,2)-pw->xyzInit(a1,2));
+      ok = true;
+      break;
+    }
+  }
+  pos.Free();
+  return(ok);
+}
